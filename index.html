@@ -45,10 +45,12 @@
         .btn-logout { padding: 8px 16px; border: 1px solid #d9d9d9; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.3s; }
         .btn-logout:hover { color: var(--danger-color); border-color: var(--danger-color); }
         
-        .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-        .tool-item { padding: 30px; background: #f8fbff; border: 1px solid #e1e8f5; border-radius: 12px; cursor: pointer; text-align: center; transition: 0.3s; position: relative; overflow: hidden; }
+        .tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .tool-item { padding: 25px; background: #f8fbff; border: 1px solid #e1e8f5; border-radius: 12px; cursor: pointer; text-align: left; transition: 0.3s; position: relative; overflow: hidden; }
         .tool-item:hover { transform: translateY(-5px); border-color: var(--primary-color); box-shadow: 0 5px 15px rgba(0,102,255,0.1); }
-        .tool-item span { font-size: 40px; display: block; margin-bottom: 15px; }
+        .tool-item .icon { font-size: 32px; display: block; margin-bottom: 12px; }
+        .tool-item .title { font-size: 18px; font-weight: bold; display: block; margin-bottom: 8px; color: var(--primary-color); }
+        .tool-item .desc { font-size: 13px; color: #666; line-height: 1.6; border-top: 1px solid #eee; padding-top: 12px; }
         
         /* 管理员面板 */
         .admin-nav { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -187,7 +189,6 @@
             <div class="modal-header">
                 <h3 id="runToolName">工具运行</h3>
             </div>
-            <div id="runToolDesc" class="desc-box"></div>
             <div style="background: #f9f9f9; padding: 20px; border-radius: 12px; border: 1px dashed #ccc; margin-bottom: 20px;">
                 <div class="input-group" style="text-align: left;">
                     <label style="font-weight: bold; color: var(--primary-color);">第一步：请选择要处理的源文件 (.xlsx)</label>
@@ -197,7 +198,7 @@
                     <label>第二步：设置导出文件名 (可选)</label>
                     <input type="text" id="exportFileName" placeholder="结果文件名，留空则自动生成">
                 </div>
-                <button id="runProcessBtn" class="btn" onclick="executeCoreLogic()">开始严格加工并导出结果</button>
+                <button id="runProcessBtn" class="btn" onclick="executeCoreLogic()">处理并导出</button>
             </div>
             <button class="btn btn-gray" onclick="closeModal('runModal')">取消并返回</button>
         </div>
@@ -693,9 +694,9 @@
             document.getElementById('userCategoryView').style.display = 'block';
             document.getElementById('userToolView').style.display = 'none';
             grid.innerHTML = state.categories.map(c => `
-                <div class="tool-item" onclick="showUserTools(${c.id})">
-                    <span>📂</span>
-                    <strong>${c.name}</strong>
+                <div class="tool-item" onclick="showUserTools(${c.id})" style="text-align: center;">
+                    <span class="icon">📂</span>
+                    <strong class="title">${c.name}</strong>
                     <div style="font-size:12px; color:#999; margin-top:5px;">${c.tools.filter(t=>t.enabled).length} 个可用工具</div>
                 </div>
             `).join('');
@@ -711,16 +712,20 @@
             const activeTools = cat.tools.filter(t => t.enabled);
             grid.innerHTML = activeTools.map(t => `
                 <div class="tool-item" onclick="openRunModal(${cid}, ${t.id})">
-                    <span>🛠️</span>
-                    <strong>${t.name}</strong>
+                    <span class="icon">🛠️</span>
+                    <strong class="title">${t.name}</strong>
+                    <div class="desc">${t.desc}</div>
                 </div>
-            `).join('') + `<div class="tool-item" onclick="renderUserCats()" style="background:#eee;"><span>↩️</span><strong>返回</strong></div>`;
+            `).join('') + `
+                <div class="tool-item" onclick="renderUserCats()" style="background:#eee; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                    <span class="icon" style="margin-bottom: 0;">↩️</span>
+                    <strong class="title" style="margin-bottom: 0;">返回分类</strong>
+                </div>`;
         }
 
         function openRunModal(cid, tid) {
             currentTool = state.categories.find(c => c.id === cid).tools.find(t => t.id === tid);
             document.getElementById('runToolName').innerText = `正在运行：${currentTool.name}`;
-            document.getElementById('runToolDesc').innerText = currentTool.desc;
             document.getElementById('excelInput').value = ''; // 清除旧文件
             document.getElementById('exportFileName').value = '';
             document.getElementById('runModal').style.display = 'flex';
