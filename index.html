@@ -20,39 +20,30 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow-x: hidden; }
         .container { width: 100%; max-width: 800px; padding: 20px; text-align: center; }
-        
-        /* 登录页面 */
         .login-card { background: var(--card-bg); padding: 40px; border-radius: var(--border-radius); box-shadow: var(--shadow); width: 100%; max-width: 400px; margin: 0 auto; }
         .login-header { margin-bottom: 30px; }
         .login-header h1 { font-size: 24px; color: var(--primary-color); margin-bottom: 10px; }
         .tab-switch { display: flex; background: #f0f2f5; border-radius: 8px; padding: 4px; margin-bottom: 24px; }
-        .tab-btn { flex: 1; border: none; padding: 10px; border-radius: 6px; background: transparent; cursor: pointer; font-weight: 500; transition: 0.3s; }
+        .tab-btn { flex: 1; border: none; padding: 10px; border-radius: 6px; background: transparent; cursor: pointer; font-weight: 500; transition: all 0.3s; }
         .tab-btn.active { background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); color: var(--primary-color); }
-        
         .input-group { margin-bottom: 20px; text-align: left; }
         .input-group label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--secondary-text); }
-        input[type="password"], input[type="text"], input[type="number"], textarea, select { width: 100%; padding: 12px 16px; border: 1px solid #d9d9d9; border-radius: 8px; font-size: 16px; outline: none; transition: 0.3s; }
+        input[type="password"], input[type="text"], textarea, select { width: 100%; padding: 12px 16px; border: 1px solid #d9d9d9; border-radius: 8px; font-size: 16px; outline: none; transition: 0.3s; }
         input:focus, textarea:focus { border-color: var(--primary-color); }
-        
         .login-btn { width: 100%; padding: 12px; background: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.3s; }
         .login-btn:hover { background: #0052cc; }
         .login-btn:disabled { background: #ccc; cursor: not-allowed; }
-        
-        /* 仪表盘 */
         .dashboard { display: none; width: 100%; max-width: 1000px; background: var(--card-bg); border-radius: var(--border-radius); box-shadow: var(--shadow); padding: 30px; min-height: 500px; text-align: left; }
         .dash-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
         .dash-header h2 { font-size: 22px; color: var(--primary-color); }
         .btn-logout { padding: 8px 16px; border: 1px solid #d9d9d9; background: white; border-radius: 6px; cursor: pointer; transition: 0.3s; }
         .btn-logout:hover { color: var(--danger-color); border-color: var(--danger-color); }
-        
         .category-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px; }
-        .tool-btn { padding: 25px; background: #f8fbff; border: 1px solid #e1e8f5; border-radius: 12px; cursor: pointer; text-align: center; transition: 0.3s; }
+        .tool-btn { padding: 20px; background: #f8fbff; border: 1px solid #e1e8f5; border-radius: 12px; cursor: pointer; text-align: center; transition: 0.3s; }
         .tool-btn:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-color: var(--primary-color); }
-        
         .admin-nav { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
         .nav-link { padding: 8px 15px; background: #f0f2f5; border-radius: 6px; cursor: pointer; font-size: 14px; color: var(--secondary-text); }
         .nav-link.active { background: var(--primary-color); color: white; }
-        
         .admin-section { display: none; }
         .admin-section.active { display: block; }
         .tool-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
@@ -61,29 +52,21 @@
         .btn-edit { background: #e6f7ff; color: #1890ff; }
         .btn-del { background: #fff1f0; color: #ff4d4f; }
         .btn-add { background: var(--primary-color); color: white; padding: 8px 16px; margin-bottom: 15px; }
-        
-        /* 弹窗 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .close-modal { cursor: pointer; font-size: 24px; color: #999; }
-        
-        /* 进度条 */
-        .progress-box { width: 100%; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin: 15px 0; }
-        #progressBar { width: 0%; height: 100%; background: var(--primary-color); transition: 0.3s; }
-        
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 2000; justify-content: center; align-items: center; font-weight: bold; color: var(--primary-color); }
     </style>
 </head>
 <body>
-    <div id="loading" class="loading-overlay">数据库初始化中...</div>
-
+    <div id="loading" class="loading-overlay">数据库加载中...</div>
     <div class="container">
         <!-- 登录视图 -->
         <div id="loginView" class="login-card">
             <div class="login-header">
                 <h1>内部工具平台</h1>
-                <p style="color: #999; font-size: 14px;">IndexedDB v2 极速引擎</p>
+                <p style="color: #999; font-size: 14px;">支持超大文件存储引擎</p>
             </div>
             <div class="tab-switch">
                 <button class="tab-btn active" onclick="switchLogin('user')">用户登录</button>
@@ -122,6 +105,7 @@
                 <div class="admin-nav">
                     <div class="nav-link active" onclick="switchAdminSection('tools')">工具管理</div>
                     <div class="nav-link" onclick="switchAdminSection('settings')">系统设置</div>
+                    <div class="nav-link" onclick="switchAdminSection('logs')">使用日志</div>
                 </div>
                 <div id="section-tools" class="admin-section active">
                     <button class="btn-add" onclick="openCategoryModal()">+ 添加类别</button>
@@ -143,6 +127,7 @@
                     </div>
                     <button class="login-btn" onclick="saveSettings()">保存设置</button>
                 </div>
+                <div id="section-logs" class="admin-section"><div id="logContainer" style="max-height: 400px; overflow-y: auto;"></div></div>
             </div>
         </div>
     </div>
@@ -167,24 +152,26 @@
                 
                 <div id="processStatus" style="margin-top:15px; display:none;">
                     <div style="color:var(--primary-color); font-weight:bold; margin-bottom:10px;">⏳ 正在运行处理程序...</div>
-                    <div class="progress-box"><div id="progressBar"></div></div>
+                    <div style="width:100%; height:8px; background:#eee; border-radius:4px; overflow:hidden;">
+                        <div id="progressBar" style="width:0%; height:100%; background:var(--primary-color); transition:0.3s;"></div>
+                    </div>
                 </div>
                 <div id="processSuccess" style="margin-top:15px; color:var(--success-color); font-weight:bold; display:none;">✅ 处理完成！文件已自动下载。</div>
             </div>
         </div>
     </div>
 
-    <!-- 管理员编辑弹窗 -->
+    <!-- 编辑弹窗 -->
     <div id="toolEditModal" class="modal">
         <div class="modal-content">
             <div class="modal-header"><h3>工具编辑</h3><span class="close-modal" onclick="closeModal('toolEditModal')">&times;</span></div>
             <div class="input-group"><label>名称</label><input type="text" id="toolNameInput"></div>
             <div class="input-group">
-                <label>程序代码/逻辑内容 (建议 2MB 以下)</label>
-                <textarea id="toolCodeInput" rows="12" placeholder="粘贴代码或说明..."></textarea>
+                <label>程序代码/内容 (建议 2MB 以下)</label>
+                <textarea id="toolCodeInput" rows="12" placeholder="直接粘贴或上传文件..."></textarea>
                 <div id="sizeHint" style="font-size:12px; color:#999; margin-top:5px;"></div>
             </div>
-            <div class="input-group"><label>上传代码文件</label><input type="file" id="toolCodeFile" onchange="handleFileUpload(this)"></div>
+            <div class="input-group"><label>上传文件 (建议 2MB 以下)</label><input type="file" id="toolCodeFile" onchange="handleFileUpload(this)"></div>
             <button id="saveToolBtn" class="login-btn" onclick="handleSaveTool()">确认保存</button>
         </div>
     </div>
@@ -199,7 +186,7 @@
     </div>
 
     <script>
-        // --- 存储引擎 (IndexedDB v2) ---
+        // --- 数据库引擎 (IndexedDB) ---
         const DB_NAME = 'ToolPlatformDB_v2';
         const META_STORE = 'Metadata';
         const CODE_STORE = 'ToolCode';
@@ -213,7 +200,10 @@
                     if (!database.objectStoreNames.contains(META_STORE)) database.createObjectStore(META_STORE);
                     if (!database.objectStoreNames.contains(CODE_STORE)) database.createObjectStore(CODE_STORE);
                 };
-                request.onsuccess = e => { db = e.target.result; resolve(); };
+                request.onsuccess = e => {
+                    db = e.target.result;
+                    resolve();
+                };
             });
         }
 
@@ -263,7 +253,7 @@
         }
 
         function getDefaultState() {
-            return { adminPass: 'admin888', userPass: 'user666', siteEnabled: true, usageLimit: 999, categories: [], userStats: {} };
+            return { adminPass: 'admin888', userPass: 'user666', siteEnabled: true, usageLimit: 999, categories: [], logs: [], userStats: {} };
         }
 
         // --- 应用逻辑 ---
@@ -301,12 +291,14 @@
                     document.getElementById('adminHome').style.display = 'block';
                     renderAdminTools();
                 }
-            } else { document.getElementById('loginError').style.display = 'block'; }
+            } else {
+                document.getElementById('loginError').style.display = 'block';
+            }
         }
 
         function handleLogout() { location.reload(); }
 
-        // --- 用户端逻辑 ---
+        // --- 用户端 ---
         function renderUserCategories() {
             const container = document.getElementById('categoryContainer');
             container.innerHTML = state.categories.map(cat => `
@@ -322,11 +314,6 @@
             document.getElementById('toolContainer').innerHTML = cat.tools.map(t => `
                 <div class="tool-btn" onclick="openToolRun(${t.id}, '${t.name}')">🛠️<br><strong>${t.name}</strong></div>
             `).join('');
-        }
-
-        function backToCategories() {
-            document.getElementById('userCategoryView').style.display = 'block';
-            document.getElementById('userToolView').style.display = 'none';
         }
 
         let currentRunToolId = null;
@@ -363,14 +350,19 @@
                 status.style.display = 'none'; success.style.display = 'block';
                 const originalName = fileInput.files[0].name;
                 const exportName = document.getElementById('exportFileName').value || 'result_processed';
-                const blob = new Blob([`模拟Python处理结果\n源文件：${originalName}\n时间：${new Date().toLocaleString()}`], { type: 'text/plain' });
+                const blob = new Blob([`模拟处理结果\n源文件：${originalName}\n处理工具ID：${currentRunToolId}\n时间：${new Date().toLocaleString()}`], { type: 'text/plain' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a'); a.href = url; a.download = `${exportName}.txt`; a.click();
                 URL.revokeObjectURL(url);
             }
         }
 
-        // --- 管理员逻辑 ---
+        function backToCategories() {
+            document.getElementById('userCategoryView').style.display = 'block';
+            document.getElementById('userToolView').style.display = 'none';
+        }
+
+        // --- 管理员端 ---
         function switchAdminSection(s) {
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
             event.target.classList.add('active');
@@ -417,7 +409,9 @@
             const name = document.getElementById('catNameInput').value;
             if (editingCatId) state.categories.find(c => c.id === editingCatId).name = name;
             else state.categories.push({ id: Date.now(), name, tools: [] });
-            await saveMetadata(state); renderAdminTools(); closeModal('categoryModal');
+            await saveMetadata(state);
+            renderAdminTools();
+            closeModal('categoryModal');
         }
 
         async function deleteCategory(id) {
@@ -425,7 +419,8 @@
                 const cat = state.categories.find(c => c.id === id);
                 for (const tool of cat.tools) await deleteToolCode(tool.id);
                 state.categories = state.categories.filter(c => c.id !== id);
-                await saveMetadata(state); renderAdminTools();
+                await saveMetadata(state);
+                renderAdminTools();
             }
         }
 
@@ -433,12 +428,19 @@
             editingToolContext = { catId, toolId };
             const tool = toolId ? state.categories.find(c => c.id === catId).tools.find(t => t.id === toolId) : null;
             document.getElementById('toolNameInput').value = tool ? tool.name : '';
-            document.getElementById('toolCodeInput').value = '加载中...';
+            
+            // 异步加载工具内容，防止主界面卡顿
+            document.getElementById('toolCodeInput').value = '正在从本地数据库加载...';
             if (toolId) {
                 const code = await getToolCode(toolId);
                 document.getElementById('toolCodeInput').value = code;
-                document.getElementById('sizeHint').innerText = `已加载: ${(code.length / 1024 / 1024).toFixed(2)} MB`;
-            } else { document.getElementById('toolCodeInput').value = ''; document.getElementById('sizeHint').innerText = ''; }
+                const sizeMB = (code.length / (1024 * 1024)).toFixed(2);
+                document.getElementById('sizeHint').innerText = `已加载: ${sizeMB} MB`;
+            } else {
+                document.getElementById('toolCodeInput').value = '';
+                document.getElementById('sizeHint').innerText = '';
+            }
+            
             document.getElementById('toolEditModal').style.display = 'flex';
         }
 
@@ -446,16 +448,35 @@
             const btn = document.getElementById('saveToolBtn');
             const name = document.getElementById('toolNameInput').value;
             const code = document.getElementById('toolCodeInput').value;
+            
             if (!name) return alert('请输入名称');
-            btn.disabled = true; btn.innerText = '保存中...';
+            
+            const sizeInMB = code.length / (1024 * 1024);
+            if (sizeInMB > 2) {
+                if (!confirm(`当前内容大小为 ${sizeInMB.toFixed(2)}MB，超过建议的 2MB。是否继续？`)) return;
+            }
+
+            btn.disabled = true; btn.innerText = '正在分步写入数据库...';
+            
             setTimeout(async () => {
                 const cat = state.categories.find(c => c.id === editingToolContext.catId);
                 let toolId = editingToolContext.toolId;
-                if (toolId) cat.tools.find(t => t.id === toolId).name = name;
-                else { toolId = Date.now(); cat.tools.push({ id: toolId, name }); }
+                
+                if (toolId) {
+                    const t = cat.tools.find(t => t.id === toolId);
+                    t.name = name;
+                } else {
+                    toolId = Date.now();
+                    cat.tools.push({ id: toolId, name });
+                }
+                
+                // 核心改进：先保存大型代码，再保存小型配置，互不干扰
                 await saveToolCode(toolId, code);
                 await saveMetadata(state);
-                renderAdminTools(); btn.disabled = false; btn.innerText = '确认保存'; closeModal('toolEditModal');
+                
+                renderAdminTools();
+                btn.disabled = false; btn.innerText = '确认保存';
+                closeModal('toolEditModal');
             }, 50);
         }
 
@@ -463,16 +484,23 @@
             if (confirm('确认删除？')) {
                 const cat = state.categories.find(c => c.id === catId);
                 cat.tools = cat.tools.filter(t => t.id !== toolId);
-                await deleteToolCode(toolId); await saveMetadata(state); renderAdminTools();
+                await deleteToolCode(toolId);
+                await saveMetadata(state);
+                renderAdminTools();
             }
         }
 
         function handleFileUpload(input) {
-            const file = input.files[0]; if (!file) return;
+            const file = input.files[0];
+            if (!file) return;
+            const sizeInMB = file.size / (1024 * 1024);
+            if (sizeInMB > 5) return alert('文件超过 5MB，请拆分后上传。');
+            
             const reader = new FileReader();
             reader.onload = e => {
                 document.getElementById('toolCodeInput').value = e.target.result;
-                document.getElementById('sizeHint').innerText = `已加载: ${(e.target.result.length/1024/1024).toFixed(2)} MB`;
+                const finalSizeMB = (e.target.result.length/1024/1024).toFixed(2);
+                document.getElementById('sizeHint').innerText = `已加载: ${finalSizeMB} MB`;
             };
             reader.readAsText(file);
         }
@@ -482,7 +510,8 @@
             state.adminPass = document.getElementById('setAdminPass').value;
             state.usageLimit = parseInt(document.getElementById('setUsageLimit').value);
             state.siteEnabled = document.getElementById('setSiteStatus').value === 'true';
-            await saveMetadata(state); alert('已保存');
+            await saveMetadata(state);
+            alert('设置已保存');
         }
 
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
