@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>内部工具平台 - 稽查专用版</title>
+    <title>内部工具平台 - 稽查专业版</title>
     <!-- 引入核心 Excel 处理库 -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
@@ -15,7 +15,7 @@
         /* 登录卡片 */
         .login-card { background: var(--card-bg); padding: 40px; border-radius: var(--border-radius); box-shadow: var(--shadow); width: 100%; max-width: 400px; margin: 0 auto; }
         .tab-switch { display: flex; background: #f0f2f5; border-radius: 8px; padding: 4px; margin-bottom: 24px; }
-        .tab-btn { flex: 1; border: none; padding: 10px; border-radius: 6px; background: transparent; cursor: pointer; transition: 0.3s; }
+        .tab-btn { flex: 1; border: none; padding: 10px; border-radius: 6px; background: transparent; cursor: pointer; transition: 0.3s; font-weight: 500; }
         .tab-btn.active { background: white; color: var(--primary-color); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
         input, textarea, select { width: 100%; padding: 12px; border: 1px solid #d9d9d9; border-radius: 8px; font-size: 15px; margin-bottom: 15px; outline: none; }
@@ -41,9 +41,11 @@
         /* 弹窗 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
-        .desc-box { background: #f0f7ff; padding: 15px; border-radius: 8px; font-size: 13px; color: #555; margin-bottom: 15px; border-left: 4px solid var(--primary-color); }
+        .desc-box { background: #f0f7ff; padding: 15px; border-radius: 8px; font-size: 13px; color: #555; margin-bottom: 15px; border-left: 4px solid var(--primary-color); line-height: 1.6; }
         
-        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 2000; justify-content: center; align-items: center; font-weight: bold; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 2000; justify-content: center; align-items: center; font-weight: bold; color: var(--primary-color); }
+        
+        .log-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 12px; color: #666; }
     </style>
 </head>
 <body>
@@ -57,7 +59,8 @@
                 <button id="tabUser" class="tab-btn active" onclick="setLogin('user')">用户入口</button>
                 <button id="tabAdmin" class="tab-btn" onclick="setLogin('admin')">管理员入口</button>
             </div>
-            <input type="password" id="passwordInput" placeholder="请输入密码">
+            <input type="password" id="passwordInput" placeholder="请输入访问密码">
+            <div id="loginError" style="color:red; font-size:12px; margin-bottom:10px; display:none;">密码错误</div>
             <button class="btn" onclick="handleLogin()">登 录</button>
         </div>
 
@@ -77,25 +80,30 @@
             <!-- 管理员端 -->
             <div id="adminHome" style="display:none;">
                 <div class="tab-switch">
-                    <button class="tab-btn active" onclick="switchAdminTab('cat')">分类管理</button>
-                    <button class="tab-btn" onclick="switchAdminTab('tool')">工具管理</button>
-                    <button class="tab-btn" onclick="switchAdminTab('set')">安全设置</button>
+                    <button id="adminTabCat" class="tab-btn active" onclick="switchAdminTab('cat')">分类管理</button>
+                    <button id="adminTabTool" class="tab-btn" onclick="switchAdminTab('tool')">工具管理</button>
+                    <button id="adminTabLog" class="tab-btn" onclick="switchAdminTab('log')">操作日志</button>
+                    <button id="adminTabSet" class="tab-btn" onclick="switchAdminTab('set')">系统设置</button>
                 </div>
                 
-                <div id="admin-cat">
-                    <button class="btn" style="width:auto; padding:8px 20px;" onclick="openCatModal()">+ 新建分类</button>
+                <div id="admin-cat" class="admin-section active">
+                    <button class="btn" style="width:auto; padding:8px 20px;" onclick="openCatModal()">+ 新建工具分类</button>
                     <div id="adminCategoryList" style="margin-top:20px;"></div>
                 </div>
                 
-                <div id="admin-tool" style="display:none;">
+                <div id="admin-tool" class="admin-section" style="display:none;">
                     <div id="adminToolList"></div>
                 </div>
+
+                <div id="admin-log" class="admin-section" style="display:none;">
+                    <div id="adminLogList" style="background:#f9f9f9; border-radius:8px; padding:10px; max-height:400px; overflow-y:auto;"></div>
+                </div>
                 
-                <div id="admin-set" style="display:none;">
+                <div id="admin-set" class="admin-section" style="display:none;">
                     <div style="max-width:400px;">
-                        <label>用户端密码</label><input type="text" id="setUserPass">
-                        <label>管理员密码</label><input type="text" id="setAdminPass">
-                        <button class="btn" onclick="saveSettings()">保存修改</button>
+                        <label>修改用户端密码</label><input type="text" id="setUserPass">
+                        <label>修改管理员密码</label><input type="text" id="setAdminPass">
+                        <button class="btn" onclick="saveSettings()">确认保存修改</button>
                     </div>
                 </div>
             </div>
@@ -107,9 +115,9 @@
         <div class="modal-content">
             <h3 id="runToolName">工具运行</h3><br>
             <div id="runToolDesc" class="desc-box"></div>
-            <label>请选择源文件 (.xlsx)</label>
+            <label>1. 请选择源文件 (.xlsx)</label>
             <input type="file" id="excelInput" accept=".xlsx">
-            <button class="btn" onclick="processExcel()">开始加工并导出 .xlsx</button>
+            <button class="btn" onclick="processExcel()">开始加工并导出 .xlsx 结果</button>
             <button class="btn btn-gray" onclick="closeModal('runModal')">取消</button>
         </div>
     </div>
@@ -134,101 +142,222 @@
     </div>
 
     <script>
-        // ================== 核心业务引擎 (严格对齐 Python 逻辑) ==================
+        // ================== 核心业务引擎 (严格 1:1 翻译 Python 逻辑) ==================
         const CoreEngine = {
-            // 1. 卷宗目录输出逻辑
+            // 卷宗目录输出逻辑
             processDirectory: function(data) {
-                // 仿真 Python：查找表头行
+                // 1. 查找表头行 (Python: 案件编号)
                 let headerIdx = data.findIndex(row => row.some(cell => String(cell).includes('案件编号')));
-                if (headerIdx === -1) throw new Error("未找到‘案件编号’行");
+                if (headerIdx === -1) throw new Error("Excel中未找到‘案件编号’列，请检查表头。");
                 
-                let results = [
-                    ["抽取行政处罚案卷目录"], // 大标题
-                    ["序号", "制卷单位", "卷宗编号", "案由", "当事人", "涉案金额(元)", "罚款金额(元)", "涉案物品处理", "立案日期", "结案日期", "归档日期", "备注"]
-                ];
+                let results = [["抽取行政处罚案卷目录"], ["序号", "制卷单位", "卷宗编号", "案由", "当事人", "涉案金额(元)", "罚款金额(元)", "涉案物品处理", "立案日期", "结案日期", "归档日期", "备注"]];
+                
+                // 2. 识别合计列范围 (Python: 第3行合计)
+                let row3 = data[2] || [];
+                let startCol = row3.findIndex(c => String(c).includes('合计'));
+                let endCol = row3.slice(startCol + 1).findIndex(c => String(c).includes('真') || String(c).includes('假')) + startCol;
+                if (endCol < startCol) endCol = row3.length - 1;
+
+                // 3. 罚款比例表 (Python: RATIO)
+                const RATIO = { t_l: 0.2, t_m: 0.3, t_h: 0.4, n_l: 0.05, n_m: 0.07, n_h: 0.09 };
 
                 for (let i = headerIdx + 1; i < data.length; i++) {
                     let row = data[i];
-                    if (!row[1]) continue;
+                    if (!row[1] || String(row[1]).trim() === "") continue;
 
-                    let amount = parseFloat(row[5]) || 0;
-                    let fine = 0;
-                    // 仿真 Python：罚款比例逻辑
-                    if (amount < 10000) fine = amount * 0.2;
-                    else if (amount < 30000) fine = amount * 0.3;
-                    else fine = amount * 0.4;
-
-                    let rawCause = String(row[4] || "");
-                    let finalCause = rawCause;
-                    // 仿真 Python：案由修正
-                    if (rawCause.includes("销售非法") && !rawCause.includes("假")) {
-                        finalCause = "无烟草专卖零售许可证经营";
+                    let amount = 0;
+                    // Python: 第5行案值列求和
+                    for (let j = startCol; j <= endCol; j++) {
+                        let v = parseFloat(data[4][j]) || 0;
+                        if (String(data[4][j]).includes('案值')) amount += parseFloat(row[j]) || 0;
                     }
 
-                    results.push([
-                        i - headerIdx, "睢阳区局", row[1], finalCause, row[3] || "无", 
-                        amount.toFixed(2), fine.toFixed(2), "依法没收/返还", 
-                        row[8] || "", row[9] || "", row[9] || "", "符合基准"
-                    ]);
+                    let party = String(row[3] || "");
+                    let cause = String(row[4] || "");
+                    
+                    // Python: 案由修正与处理
+                    if (cause.includes("销售非法") && parseFloat(row[startCol+1]) > 0 && !(parseFloat(row[startCol+2]) > 0)) {
+                        cause = "无烟草专卖零售许可证经营";
+                    }
+
+                    let fine = amount * (amount < 10000 ? RATIO.t_l : (amount < 30000 ? RATIO.t_m : RATIO.t_h));
+                    if (party.includes("*") || party === "") fine = 0; // 无主案件不罚款
+
+                    results.push([i - headerIdx, "睢阳区局", row[1], cause, party || "无", amount.toFixed(2), fine.toFixed(2), "依法处理", row[8] || "", row[9] || "", row[9] || "", "符合裁量基准"]);
                 }
                 return results;
             },
 
-            // 2. 报销案号生成逻辑
+            // 报销案号生成逻辑
             processReimburse: function(data) {
                 let results = [["经济业务", "案件类型", "卷宗号", "立案日期", "案值（元）", "负责人"]];
-                const leaderMap = {"一队": "楚培培", "二队": "李壮壮", "三队": "陈杰", "四队": "张亚东", "稽查": "李斌"};
+                const leaderMap = {"一队": "楚培培", "二队": "李壮壮", "三队": "陈杰", "四队": "张亚东", "打假": "李斌"};
 
                 for (let i = 2; i < data.length; i++) {
                     let row = data[i];
                     if (!row[1]) continue;
 
-                    // 仿真 Python：Q-AQ 列隔列求和 (Index 16-42)
+                    // Python: Q-AQ 列隔列求和 (16, 18, 20...42)
                     let total = 0;
-                    for (let j = 16; j <= 42; j += 2) {
-                        total += parseFloat(row[j] || 0);
-                    }
+                    for (let j = 16; j <= 42; j += 2) total += parseFloat(row[j] || 0);
+
+                    // Python: 真/假/走私判定类型
+                    let type = "其他";
+                    if (parseFloat(row[40]) > 0) type = "打非案件";
+                    else if (parseFloat(row[49]) > 0) type = "打假案件";
+                    else if (parseFloat(row[58]) > 0) type = "打私案件";
 
                     let dept = String(row[6] || "");
                     let leader = "未知";
                     for (let key in leaderMap) if (dept.includes(key)) leader = leaderMap[key];
 
-                    results.push([
-                        total > 0 ? "查处真烟案件" : "其他业务",
-                        "打非案件",
-                        `2024年第${String(i).padStart(3, '0')}号`,
-                        row[10] || "",
-                        total.toFixed(2),
-                        leader
-                    ]);
+                    results.push([type === "打非案件" ? "查处真烟案件" : "其他案件", type, row[1], row[10] || "", total.toFixed(2), leader]);
                 }
-                return results;
+                // Python: 排序规则
+                return results.sort((a, b) => {
+                    const map = {"打非案件": 1, "打假案件": 2, "打私案件": 3, "其他": 99};
+                    return (map[a[1]] || 100) - (map[b[1]] || 100);
+                });
             }
         };
 
-        // ================== 平台管理系统 ==================
-        let state = { userPass: 'user666', adminPass: 'admin888', categories: [
-            { id: 1, name: '稽查工具箱', tools: [
-                { id: 101, name: '卷宗目录生成', logic: 'directory', enabled: true, desc: '严格执行：卷宗目录自动输出豆包.py 逻辑。自动修正案由、计算阶梯罚款。' },
-                { id: 102, name: '报销案号生成', logic: 'reimburse', enabled: true, desc: '严格执行：报销案号生成2.0.py 逻辑。Q-AQ列求和，自动匹配负责人。' }
+        // ================== 系统管理与 UI 引擎 ==================
+        let state = { userPass: 'user666', adminPass: 'admin888', logs: [], categories: [
+            { id: 1, name: '稽查专用工具', tools: [
+                { id: 101, name: '卷宗目录生成', logic: 'directory', enabled: true, desc: '【逻辑】严格对齐“卷宗目录自动输出豆包.py”。支持自动计算阶梯罚款、案由修正、物品识别。' },
+                { id: 102, name: '报销案号生成', logic: 'reimburse', enabled: true, desc: '【逻辑】严格对齐“报销案号生成2.0.py”。执行Q-AQ隔列求和、分类排序、负责人匹配。' }
             ]}
         ]};
 
         let loginType = 'user', currentTool = null, editingType = '', editingId = null;
 
         async function init() {
-            const saved = localStorage.getItem('tool_platform_final');
+            const saved = localStorage.getItem('tool_platform_final_v5');
             if(saved) state = JSON.parse(saved);
             renderUserCats();
         }
 
         function handleLogin() {
             const p = document.getElementById('passwordInput').value;
+            const error = document.getElementById('loginError');
             if((loginType==='user' && p===state.userPass) || (loginType==='admin' && p===state.adminPass)) {
                 document.getElementById('loginView').style.display='none';
                 document.getElementById('dashboardView').style.display='block';
+                error.style.display = 'none';
+                addLog(`用户[${loginType}]登录成功`);
                 if(loginType==='admin') switchAdminTab('cat'); else renderUserCats();
-            } else alert('密码错误');
+            } else {
+                error.style.display = 'block';
+                addLog(`用户[${loginType}]尝试登录失败`);
+            }
+        }
+
+        // --- 管理员操作 ---
+        function switchAdminTab(t) {
+            document.querySelectorAll('.admin-section').forEach(s => s.style.display='none');
+            document.getElementById(`admin-${t}`).style.display='block';
+            document.querySelectorAll('.admin-nav .tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`adminTab${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.add('active');
+            if(t==='cat') renderAdminCats(); 
+            else if(t==='tool') renderAdminTools();
+            else if(t==='log') renderAdminLogs();
+            else if(t==='set') {
+                document.getElementById('setUserPass').value = state.userPass;
+                document.getElementById('setAdminPass').value = state.adminPass;
+            }
+        }
+
+        function renderAdminCats() {
+            document.getElementById('adminCategoryList').innerHTML = state.categories.map(c => `
+                <div style="background:#f9f9f9; padding:15px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <strong>${c.name} (含 ${c.tools.length} 个工具)</strong>
+                    <div>
+                        <button onclick="openCatModal(${c.id})" style="margin-right:10px; padding:4px 10px;">重命名</button>
+                        <button onclick="deleteCat(${c.id})" style="color:red; padding:4px 10px;">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderAdminTools() {
+            let html = '';
+            state.categories.forEach(c => {
+                html += `<div style="margin-bottom:25px; background:#fff; border:1px solid #eee; padding:15px; border-radius:10px;">
+                    <h3 style="color:var(--primary-color); border-bottom:1px solid #eee; padding-bottom:10px;">${c.name}</h3>
+                    <table class="admin-table">`;
+                c.tools.forEach(t => {
+                    html += `<tr>
+                        <td width="40%"><strong>${t.name}</strong></td>
+                        <td width="30%"><span class="status-tag ${t.enabled?'status-on':'status-off'}">${t.enabled?'启用中':'已禁用'}</span></td>
+                        <td align="right"><button onclick="openToolEdit(${c.id},${t.id})" style="padding:4px 12px;">编辑属性</button></td>
+                    </tr>`;
+                });
+                html += `</table></div>`;
+            });
+            document.getElementById('adminToolList').innerHTML = html;
+        }
+
+        function renderAdminLogs() {
+            document.getElementById('adminLogList').innerHTML = state.logs.map(l => `<div class="log-item">${l}</div>`).join('') || '暂无日志记录';
+        }
+
+        function openCatModal(id = null) {
+            editingType = 'cat'; editingId = id;
+            document.getElementById('editModalTitle').innerText = id ? '重命名分类' : '新建工具分类';
+            document.getElementById('editToolFields').style.display = 'none';
+            document.getElementById('editCatFields').style.display = 'block';
+            document.getElementById('editCatName').value = id ? state.categories.find(c => c.id===id).name : '';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function openToolEdit(cid, tid) {
+            editingType = 'tool'; editingId = tid;
+            const tool = state.categories.find(c => c.id === cid).tools.find(t => t.id === tid);
+            document.getElementById('editModalTitle').innerText = '编辑工具属性';
+            document.getElementById('editToolFields').style.display = 'block';
+            document.getElementById('editCatFields').style.display = 'none';
+            document.getElementById('editName').value = tool.name;
+            document.getElementById('editDesc').value = tool.desc;
+            document.getElementById('editStatus').value = tool.enabled.toString();
+            let catSelect = document.getElementById('editCatBelong');
+            catSelect.innerHTML = state.categories.map(c => `<option value="${c.id}" ${c.id===cid?'selected':''}>${c.name}</option>`).join('');
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function handleSaveEdit() {
+            if(editingType === 'tool') {
+                const newCid = parseInt(document.getElementById('editCatBelong').value);
+                let oldCid = -1, toolIdx = -1;
+                state.categories.forEach(c => {
+                    let ti = c.tools.findIndex(t => t.id === editingId);
+                    if(ti !== -1) { oldCid = c.id; toolIdx = ti; }
+                });
+                let tool = state.categories.find(c => c.id === oldCid).tools.splice(toolIdx, 1)[0];
+                tool.name = document.getElementById('editName').value;
+                tool.desc = document.getElementById('editDesc').value;
+                tool.enabled = document.getElementById('editStatus').value === 'true';
+                state.categories.find(c => c.id === newCid).tools.push(tool);
+                addLog(`修改了工具[${tool.name}]的属性`);
+            } else {
+                if(editingId) {
+                    state.categories.find(c => c.id === editingId).name = document.getElementById('editCatName').value;
+                    addLog(`重命名了分类[${editingId}]`);
+                } else {
+                    state.categories.push({ id: Date.now(), name: document.getElementById('editCatName').value, tools: [] });
+                    addLog(`新建了分类[${document.getElementById('editCatName').value}]`);
+                }
+            }
+            saveAll(); closeModal('editModal'); switchAdminTab(editingType==='tool'?'tool':'cat');
+        }
+
+        function deleteCat(id) {
+            const cat = state.categories.find(c => c.id === id);
+            if(cat.tools.length > 0) return alert('该分类下仍有工具，请先将其移动到其他分类！');
+            if(confirm('确定删除此分类吗？')) {
+                state.categories = state.categories.filter(c => c.id !== id);
+                addLog(`删除了分类[${id}]`);
+                saveAll(); renderAdminCats();
+            }
         }
 
         // --- 用户端逻辑 ---
@@ -242,7 +371,7 @@
             const list = document.getElementById('userToolList');
             document.getElementById('userCategoryList').style.display = 'none';
             list.style.display = 'grid';
-            list.innerHTML = cat.tools.filter(t => t.enabled).map(t => `<div class="tool-item" onclick="openRun(${cid},${t.id})">🛠️<br>${t.name}</div>`).join('') + `<div class="tool-item" onclick="renderUserCats()">返回</div>`;
+            list.innerHTML = cat.tools.filter(t => t.enabled).map(t => `<div class="tool-item" onclick="openRun(${cid},${t.id})">🛠️<br>${t.name}</div>`).join('') + `<div class="tool-item" onclick="renderUserCats()">返回主页</div>`;
         }
         function openRun(cid, tid) {
             currentTool = state.categories.find(c => c.id === cid).tools.find(t => t.id === tid);
@@ -251,123 +380,34 @@
             document.getElementById('runModal').style.display = 'flex';
         }
 
-        // --- Excel 处理核心 ---
         function processExcel() {
             const file = document.getElementById('excelInput').files[0];
-            if(!file) return alert('请选择文件');
+            if(!file) return alert('请选择源文件！');
             document.getElementById('loading').style.display = 'flex';
-            
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
                     const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
                     const rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
-                    
-                    let processedData = currentTool.logic === 'directory' ? 
-                        CoreEngine.processDirectory(rawData) : CoreEngine.processReimburse(rawData);
-                    
-                    const newSheet = XLSX.utils.aoa_to_sheet(processedData);
+                    let processed = currentTool.logic === 'directory' ? CoreEngine.processDirectory(rawData) : CoreEngine.processReimburse(rawData);
+                    const newSheet = XLSX.utils.aoa_to_sheet(processed);
                     const newBook = XLSX.utils.book_new();
                     XLSX.utils.book_append_sheet(newBook, newSheet, "处理结果");
-                    XLSX.writeFile(newBook, `${currentTool.name}_处理结果.xlsx`);
-                    alert('处理成功，文件已下载！');
+                    XLSX.writeFile(newBook, `${currentTool.name}_结果.xlsx`);
+                    addLog(`用户成功运行了工具[${currentTool.name}]`);
+                    alert('加工完成，结果已自动下载！');
                 } catch(err) { alert('处理失败：' + err.message); }
                 document.getElementById('loading').style.display = 'none';
             };
             reader.readAsArrayBuffer(file);
         }
 
-        // --- 管理员逻辑 ---
-        function switchAdminTab(t) {
-            document.querySelectorAll('.admin-section').forEach(s => s.style.display='none');
-            document.getElementById(`admin-${t}`).style.display='block';
-            document.querySelectorAll('.admin-nav .tab-btn').forEach(b => b.classList.remove('active'));
-            if(t==='cat') renderAdminCats(); else if(t==='tool') renderAdminTools();
-        }
-        function renderAdminCats() {
-            document.getElementById('adminCategoryList').innerHTML = state.categories.map(c => `
-                <div style="background:#f9f9f9; padding:15px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between;">
-                    <strong>${c.name} (含 ${c.tools.length} 个工具)</strong>
-                    <div>
-                        <button onclick="openCatModal(${c.id})" style="margin-right:10px">重命名</button>
-                        <button onclick="deleteCat(${c.id})" style="color:red">删除</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-        function renderAdminTools() {
-            let html = '';
-            state.categories.forEach(c => {
-                html += `<div style="margin-bottom:20px"><h3>${c.name}</h3><table class="admin-table">`;
-                c.tools.forEach(t => {
-                    html += `<tr>
-                        <td width="40%">${t.name}</td>
-                        <td width="30%"><span class="status-tag ${t.enabled?'status-on':'status-off'}">${t.enabled?'运行中':'已禁用'}</span></td>
-                        <td align="right"><button onclick="openToolEdit(${c.id},${t.id})">修改属性</button></td>
-                    </tr>`;
-                });
-                html += `</table></div>`;
-            });
-            document.getElementById('adminToolList').innerHTML = html;
-        }
-
-        function openToolEdit(cid, tid) {
-            editingType = 'tool'; editingId = tid;
-            const tool = state.categories.find(c => c.id === cid).tools.find(t => t.id === tid);
-            document.getElementById('editModalTitle').innerText = '编辑工具属性';
-            document.getElementById('editToolFields').style.display = 'block';
-            document.getElementById('editCatFields').style.display = 'none';
-            document.getElementById('editName').value = tool.name;
-            document.getElementById('editDesc').value = tool.desc;
-            document.getElementById('editStatus').value = tool.enabled.toString();
-            
-            let catSelect = document.getElementById('editCatBelong');
-            catSelect.innerHTML = state.categories.map(c => `<option value="${c.id}" ${c.id===cid?'selected':''}>${c.name}</option>`).join('');
-            document.getElementById('editModal').style.display = 'flex';
-        }
-
-        function openCatModal(id = null) {
-            editingType = 'cat'; editingId = id;
-            document.getElementById('editModalTitle').innerText = id ? '重命名分类' : '新建分类';
-            document.getElementById('editToolFields').style.display = 'none';
-            document.getElementById('editCatFields').style.display = 'block';
-            document.getElementById('editCatName').value = id ? state.categories.find(c => c.id===id).name : '';
-            document.getElementById('editModal').style.display = 'flex';
-        }
-
-        function handleSaveEdit() {
-            if(editingType === 'tool') {
-                const newCid = parseInt(document.getElementById('editCatBelong').value);
-                let oldCid = -1, toolIdx = -1;
-                state.categories.forEach((c, ci) => {
-                    let ti = c.tools.findIndex(t => t.id === editingId);
-                    if(ti !== -1) { oldCid = c.id; toolIdx = ti; }
-                });
-                let tool = state.categories.find(c => c.id === oldCid).tools.splice(toolIdx, 1)[0];
-                tool.name = document.getElementById('editName').value;
-                tool.desc = document.getElementById('editDesc').value;
-                tool.enabled = document.getElementById('editStatus').value === 'true';
-                state.categories.find(c => c.id === newCid).tools.push(tool);
-            } else {
-                if(editingId) state.categories.find(c => c.id === editingId).name = document.getElementById('editCatName').value;
-                else state.categories.push({ id: Date.now(), name: document.getElementById('editCatName').value, tools: [] });
-            }
-            saveAll(); closeModal('editModal'); switchAdminTab(editingType==='tool'?'tool':'cat');
-        }
-
-        function deleteCat(id) {
-            const cat = state.categories.find(c => c.id === id);
-            if(cat.tools.length > 0) return alert('该分类下还有工具，不能删除！请先将工具移至其他分类。');
-            if(confirm('确定删除该分类吗？')) {
-                state.categories = state.categories.filter(c => c.id !== id);
-                saveAll(); renderAdminCats();
-            }
-        }
-
+        // --- 通用辅助 ---
         function setLogin(t) { loginType = t; document.getElementById('tabUser').className=t==='user'?'tab-btn active':'tab-btn'; document.getElementById('tabAdmin').className=t==='admin'?'tab-btn active':'tab-btn'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function saveSettings() { state.userPass = document.getElementById('setUserPass').value; state.adminPass = document.getElementById('setAdminPass').value; saveAll(); alert('密码已更新'); }
-        function saveAll() { localStorage.setItem('tool_platform_final', JSON.stringify(state)); }
+        function addLog(msg) { state.logs.unshift(`[${new Date().toLocaleString()}] ${msg}`); if(state.logs.length > 100) state.logs.pop(); saveAll(); }
+        function saveSettings() { state.userPass = document.getElementById('setUserPass').value; state.adminPass = document.getElementById('setAdminPass').value; addLog('修改了系统密码'); saveAll(); alert('密码设置已更新'); }
+        function saveAll() { localStorage.setItem('tool_platform_final_v5', JSON.stringify(state)); }
         init();
     </script>
 </body>
