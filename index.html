@@ -138,11 +138,11 @@
             <div class="modal-header"><h3>工具编辑</h3><span class="close-modal" onclick="closeModal('toolEditModal')">&times;</span></div>
             <div class="input-group"><label>名称</label><input type="text" id="toolNameInput"></div>
             <div class="input-group">
-                <label>程序代码/内容 (支持超大型文件)</label>
+                <label>程序代码/内容 (建议 2MB 以下)</label>
                 <textarea id="toolCodeInput" rows="12" placeholder="直接粘贴或上传文件..."></textarea>
                 <div id="sizeHint" style="font-size:12px; color:#999; margin-top:5px;"></div>
             </div>
-            <div class="input-group"><label>上传文件</label><input type="file" id="toolCodeFile" onchange="handleFileUpload(this)"></div>
+            <div class="input-group"><label>上传文件 (建议 2MB 以下)</label><input type="file" id="toolCodeFile" onchange="handleFileUpload(this)"></div>
             <button id="saveToolBtn" class="login-btn" onclick="handleSaveTool()">确认保存</button>
         </div>
     </div>
@@ -335,6 +335,17 @@
             const btn = document.getElementById('saveToolBtn');
             const name = document.getElementById('toolNameInput').value;
             const code = document.getElementById('toolCodeInput').value;
+            
+            if (!name) return alert('请输入名称');
+            
+            // 2MB 限制检查 (2 * 1024 * 1024 bytes)
+            const sizeInMB = code.length / (1024 * 1024);
+            if (sizeInMB > 2) {
+                if (!confirm(`当前内容大小为 ${sizeInMB.toFixed(2)}MB，超过建议的 2MB。大文件可能导致备份导出缓慢，是否继续？`)) {
+                    return;
+                }
+            }
+
             btn.disabled = true; btn.innerText = '正在写入数据库...';
             
             setTimeout(async () => {
@@ -364,10 +375,21 @@
         function handleFileUpload(input) {
             const file = input.files[0];
             if (!file) return;
+
+            // 文件读取前的大小检查
+            const sizeInMB = file.size / (1024 * 1024);
+            if (sizeInMB > 2) {
+                if (!confirm(`该文件大小为 ${sizeInMB.toFixed(2)}MB，超过建议的 2MB。是否继续上传？`)) {
+                    input.value = ''; // 清空选择
+                    return;
+                }
+            }
+
             const reader = new FileReader();
             reader.onload = e => {
                 document.getElementById('toolCodeInput').value = e.target.result;
-                document.getElementById('sizeHint').innerText = `已加载: ${(e.target.result.length/1024/1024).toFixed(2)} MB`;
+                const finalSizeMB = (e.target.result.length/1024/1024).toFixed(2);
+                document.getElementById('sizeHint').innerText = `已加载: ${finalSizeMB} MB`;
             };
             reader.readAsText(file);
         }
