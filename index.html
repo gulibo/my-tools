@@ -755,24 +755,22 @@
                         const colWidths = [5.5, 17.6, 21.5, 43.7, 12, 15, 15, 25, 18, 17, 15.5, 15];
                         outWs.columns = colWidths.map((w, i) => ({ header: '', key: 'col' + i, width: w }));
 
-                        // 2. 写入数据并设置样式 (按要求：第一行留空，第二行合并标题，第三行表头)
-                        // processed[0] 是标题, processed[1] 是表头, processed[2...] 是数据
+                        // 2. 写入数据并设置样式 (第一行标题，第二行表头)
                         processed.forEach((rowData, rIdx) => {
                             let targetRowIdx;
                             if (rIdx === 0) {
-                                // 标题行下移到第二行 (Excel行号 2)
-                                targetRowIdx = 2;
-                                outWs.getRow(1).height = 15; // 第一行留空且设置默认高度
+                                // 标题行 (Excel行号 1)
+                                targetRowIdx = 1;
                                 const row = outWs.getRow(targetRowIdx);
                                 row.values = rowData;
                                 row.height = 42;
-                                outWs.mergeCells(2, 1, 2, 12); // 合并第二行 A-L
+                                outWs.mergeCells(1, 1, 1, 12); // 合并第一行 A-L
                                 const cell = row.getCell(1);
                                 cell.font = { name: '宋体', size: 22, bold: true };
                                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                             } else if (rIdx === 1) {
-                                // 表头行下移到第三行 (Excel行号 3)
-                                targetRowIdx = 3;
+                                // 表头行 (Excel行号 2)
+                                targetRowIdx = 2;
                                 const row = outWs.getRow(targetRowIdx);
                                 row.values = rowData;
                                 row.height = 28.5;
@@ -782,8 +780,8 @@
                                     cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                                 });
                             } else {
-                                // 数据行从第四行开始 (Excel行号 rIdx + 2)
-                                targetRowIdx = rIdx + 2;
+                                // 数据行从第三行开始 (Excel行号 rIdx + 1)
+                                targetRowIdx = rIdx + 1;
                                 const row = outWs.getRow(targetRowIdx);
                                 row.values = rowData;
                                 row.height = 33.5;
@@ -809,32 +807,30 @@
                         processed.forEach((rowData, rIdx) => {
                             let targetRowIdx;
                             if (rIdx === 0) {
-                                // 第一行留空
-                                outWs.getRow(1).height = 15;
-                                // 标题行下移到第二行 (Excel行号 2)
-                                targetRowIdx = 2;
+                                // 标题行 (Excel行号 1)
+                                targetRowIdx = 1;
                                 const row = outWs.getRow(targetRowIdx);
                                 row.values = rowData;
                                 row.height = 60;
-                                outWs.mergeCells(2, 1, 2, 6); // 合并第二行 A-F
+                                outWs.mergeCells(1, 1, 1, 6); // 合并第一行 A-F
                                 const cell = row.getCell(1);
                                 cell.font = { name: '宋体', size: 22, bold: true };
                                 cell.alignment = { horizontal: 'center', vertical: 'middle' };
                             } else if (rIdx === 1) {
-                                // 单位、日期行下移到第三行 (Excel行号 3)
-                                targetRowIdx = 3;
+                                // 单位、日期行 (Excel行号 2)
+                                targetRowIdx = 2;
                                 const row = outWs.getRow(targetRowIdx);
                                 rowData[3] = "申请日期：" + dateStr; // 修正申请日期格式
                                 row.values = rowData;
                                 row.height = 30;
-                                outWs.mergeCells(3, 4, 3, 6); // 合并第三行 D-F
+                                outWs.mergeCells(2, 4, 2, 6); // 合并第二行 D-F
                                 row.eachCell((cell, cIdx) => {
                                     cell.font = { name: '宋体', size: 11 };
                                     cell.alignment = { horizontal: cIdx === 1 ? 'left' : 'center', vertical: 'middle' };
                                 });
                             } else if (rIdx === 2) {
-                                // 表头行下移到第四行 (Excel行号 4)
-                                targetRowIdx = 4;
+                                // 表头行 (Excel行号 3)
+                                targetRowIdx = 3;
                                 const row = outWs.getRow(targetRowIdx);
                                 row.values = rowData;
                                 row.height = 50;
@@ -844,8 +840,8 @@
                                     cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                                 });
                             } else {
-                                // 数据行从第五行开始 (Excel行号 rIdx + 2)
-                                targetRowIdx = rIdx + 2;
+                                // 数据行从第四行开始 (Excel行号 rIdx + 1)
+                                targetRowIdx = rIdx + 1;
                                 const row = outWs.getRow(targetRowIdx);
                                 row.values = rowData;
                                 row.height = 50;
