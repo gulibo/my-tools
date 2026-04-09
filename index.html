@@ -158,16 +158,18 @@
 
     <script>
         // --- 数据库引擎 (IndexedDB) ---
-        const DB_NAME = 'ToolPlatformDB';
-        const STORE_NAME = 'AppState';
+        const DB_NAME = 'ToolPlatformDB_v2';
+        const META_STORE = 'Metadata';
+        const CODE_STORE = 'ToolCode';
         let db;
 
         async function initDB() {
             return new Promise((resolve) => {
-                const request = indexedDB.open(DB_NAME, 1);
+                const request = indexedDB.open(DB_NAME, 2);
                 request.onupgradeneeded = e => {
-                    db = e.target.result;
-                    db.createObjectStore(STORE_NAME);
+                    const database = e.target.result;
+                    if (!database.objectStoreNames.contains(META_STORE)) database.createObjectStore(META_STORE);
+                    if (!database.objectStoreNames.contains(CODE_STORE)) database.createObjectStore(CODE_STORE);
                 };
                 request.onsuccess = e => {
                     db = e.target.result;
@@ -176,20 +178,47 @@
             });
         }
 
-        async function getData() {
+        async function getMetadata() {
             return new Promise(resolve => {
-                const tx = db.transaction(STORE_NAME, 'readonly');
-                const store = tx.objectStore(STORE_NAME);
-                const req = store.get('main_state');
+                const tx = db.transaction(META_STORE, 'readonly');
+                const store = tx.objectStore(META_STORE);
+                const req = store.get('config');
                 req.onsuccess = () => resolve(req.result || getDefaultState());
             });
         }
 
-        async function saveData(data) {
+        async function saveMetadata(data) {
             return new Promise(resolve => {
-                const tx = db.transaction(STORE_NAME, 'readwrite');
-                const store = tx.objectStore(STORE_NAME);
-                const req = store.put(data, 'main_state');
+                const tx = db.transaction(META_STORE, 'readwrite');
+                const store = tx.objectStore(META_STORE);
+                const req = store.put(data, 'config');
+                req.onsuccess = () => resolve();
+            });
+        }
+
+        async function getToolCode(id) {
+            return new Promise(resolve => {
+                const tx = db.transaction(CODE_STORE, 'readonly');
+                const store = tx.objectStore(CODE_STORE);
+                const req = store.get(id);
+                req.onsuccess = () => resolve(req.result || '');
+            });
+        }
+
+        async function saveToolCode(id, code) {
+            return new Promise(resolve => {
+                const tx = db.transaction(CODE_STORE, 'readwrite');
+                const store = tx.objectStore(CODE_STORE);
+                const req = store.put(code, id);
+                req.onsuccess = () => resolve();
+            });
+        }
+
+        async function deleteToolCode(id) {
+            return new Promise(resolve => {
+                const tx = db.transaction(CODE_STORE, 'readwrite');
+                const store = tx.objectStore(CODE_STORE);
+                const req = store.delete(id);
                 req.onsuccess = () => resolve();
             });
         }
@@ -207,7 +236,7 @@
         async function start() {
             document.getElementById('loading').style.display = 'flex';
             await initDB();
-            state = await getData();
+            state = await getMetadata();
             document.getElementById('loading').style.display = 'none';
         }
 
@@ -310,24 +339,38 @@
             const name = document.getElementById('catNameInput').value;
             if (editingCatId) state.categories.find(c => c.id === editingCatId).name = name;
             else state.categories.push({ id: Date.now(), name, tools: [] });
-            await saveData(state);
+            await saveMetadata(state);
             renderAdminTools();
             closeModal('categoryModal');
         }
 
         async function deleteCategory(id) {
             if (confirm('确认删除？')) {
+                const cat = state.categories.find(c => c.id === id);
+                for (const tool of cat.tools) await deleteToolCode(tool.id);
                 state.categories = state.categories.filter(c => c.id !== id);
-                await saveData(state);
+                await saveMetadata(state);
                 renderAdminTools();
             }
         }
 
-        function openToolEdit(catId, toolId = null) {
+        async function openToolEdit(catId, toolId = null) {
             editingToolContext = { catId, toolId };
             const tool = toolId ? state.categories.find(c => c.id === catId).tools.find(t => t.id === toolId) : null;
             document.getElementById('toolNameInput').value = tool ? tool.name : '';
-            document.getElementById('toolCodeInput').value = tool ? tool.code : '';
+            
+            // 异步加载工具内容，防止主界面卡顿
+            document.getElementById('toolCodeInput').value = '正在从本地数据库加载...';
+            if (toolId) {
+                const code = await getToolCode(toolId);
+                document.getElementById('toolCodeInput').value = code;
+                const sizeMB = (code.length / (1024 * 1024)).toFixed(2);
+                document.getElementById('sizeHint').innerText = `已加载: ${sizeMB} MB`;
+            } else {
+                document.getElementById('toolCodeInput').value = '';
+                document.getElementById('sizeHint').innerText = '';
+            }
+            
             document.getElementById('toolEditModal').style.display = 'flex';
         }
 
@@ -338,25 +381,29 @@
             
             if (!name) return alert('请输入名称');
             
-            // 2MB 限制检查 (2 * 1024 * 1024 bytes)
             const sizeInMB = code.length / (1024 * 1024);
             if (sizeInMB > 2) {
-                if (!confirm(`当前内容大小为 ${sizeInMB.toFixed(2)}MB，超过建议的 2MB。大文件可能导致备份导出缓慢，是否继续？`)) {
-                    return;
-                }
+                if (!confirm(`当前内容大小为 ${sizeInMB.toFixed(2)}MB，超过建议的 2MB。是否继续？`)) return;
             }
 
-            btn.disabled = true; btn.innerText = '正在写入数据库...';
+            btn.disabled = true; btn.innerText = '正在分步写入数据库...';
             
             setTimeout(async () => {
                 const cat = state.categories.find(c => c.id === editingToolContext.catId);
-                if (editingToolContext.toolId) {
-                    const t = cat.tools.find(t => t.id === editingToolContext.toolId);
-                    t.name = name; t.code = code;
+                let toolId = editingToolContext.toolId;
+                
+                if (toolId) {
+                    const t = cat.tools.find(t => t.id === toolId);
+                    t.name = name;
                 } else {
-                    cat.tools.push({ id: Date.now(), name, code });
+                    toolId = Date.now();
+                    cat.tools.push({ id: toolId, name });
                 }
-                await saveData(state);
+                
+                // 核心改进：先保存大型代码，再保存小型配置，互不干扰
+                await saveToolCode(toolId, code);
+                await saveMetadata(state);
+                
                 renderAdminTools();
                 btn.disabled = false; btn.innerText = '确认保存';
                 closeModal('toolEditModal');
@@ -367,7 +414,8 @@
             if (confirm('确认删除？')) {
                 const cat = state.categories.find(c => c.id === catId);
                 cat.tools = cat.tools.filter(t => t.id !== toolId);
-                await saveData(state);
+                await deleteToolCode(toolId);
+                await saveMetadata(state);
                 renderAdminTools();
             }
         }
@@ -375,16 +423,9 @@
         function handleFileUpload(input) {
             const file = input.files[0];
             if (!file) return;
-
-            // 文件读取前的大小检查
             const sizeInMB = file.size / (1024 * 1024);
-            if (sizeInMB > 2) {
-                if (!confirm(`该文件大小为 ${sizeInMB.toFixed(2)}MB，超过建议的 2MB。是否继续上传？`)) {
-                    input.value = ''; // 清空选择
-                    return;
-                }
-            }
-
+            if (sizeInMB > 5) return alert('文件超过 5MB，请拆分后上传。');
+            
             const reader = new FileReader();
             reader.onload = e => {
                 document.getElementById('toolCodeInput').value = e.target.result;
@@ -399,8 +440,8 @@
             state.adminPass = document.getElementById('setAdminPass').value;
             state.usageLimit = parseInt(document.getElementById('setUsageLimit').value);
             state.siteEnabled = document.getElementById('setSiteStatus').value === 'true';
-            await saveData(state);
-            alert('已保存');
+            await saveMetadata(state);
+            alert('设置已保存');
         }
 
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
