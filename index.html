@@ -20,30 +20,39 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow-x: hidden; }
         .container { width: 100%; max-width: 800px; padding: 20px; text-align: center; }
+        
+        /* 登录页面 */
         .login-card { background: var(--card-bg); padding: 40px; border-radius: var(--border-radius); box-shadow: var(--shadow); width: 100%; max-width: 400px; margin: 0 auto; }
         .login-header { margin-bottom: 30px; }
         .login-header h1 { font-size: 24px; color: var(--primary-color); margin-bottom: 10px; }
         .tab-switch { display: flex; background: #f0f2f5; border-radius: 8px; padding: 4px; margin-bottom: 24px; }
-        .tab-btn { flex: 1; border: none; padding: 10px; border-radius: 6px; background: transparent; cursor: pointer; font-weight: 500; transition: all 0.3s; }
+        .tab-btn { flex: 1; border: none; padding: 10px; border-radius: 6px; background: transparent; cursor: pointer; font-weight: 500; transition: 0.3s; }
         .tab-btn.active { background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); color: var(--primary-color); }
+        
         .input-group { margin-bottom: 20px; text-align: left; }
         .input-group label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--secondary-text); }
-        input[type="password"], input[type="text"], textarea, select { width: 100%; padding: 12px 16px; border: 1px solid #d9d9d9; border-radius: 8px; font-size: 16px; outline: none; transition: 0.3s; }
+        input[type="password"], input[type="text"], input[type="number"], textarea, select { width: 100%; padding: 12px 16px; border: 1px solid #d9d9d9; border-radius: 8px; font-size: 16px; outline: none; transition: 0.3s; }
         input:focus, textarea:focus { border-color: var(--primary-color); }
+        
         .login-btn { width: 100%; padding: 12px; background: var(--primary-color); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.3s; }
         .login-btn:hover { background: #0052cc; }
         .login-btn:disabled { background: #ccc; cursor: not-allowed; }
+        
+        /* 仪表盘 */
         .dashboard { display: none; width: 100%; max-width: 1000px; background: var(--card-bg); border-radius: var(--border-radius); box-shadow: var(--shadow); padding: 30px; min-height: 500px; text-align: left; }
         .dash-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
         .dash-header h2 { font-size: 22px; color: var(--primary-color); }
         .btn-logout { padding: 8px 16px; border: 1px solid #d9d9d9; background: white; border-radius: 6px; cursor: pointer; transition: 0.3s; }
         .btn-logout:hover { color: var(--danger-color); border-color: var(--danger-color); }
+        
         .category-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px; }
-        .tool-btn { padding: 20px; background: #f8fbff; border: 1px solid #e1e8f5; border-radius: 12px; cursor: pointer; text-align: center; transition: 0.3s; }
+        .tool-btn { padding: 25px; background: #f8fbff; border: 1px solid #e1e8f5; border-radius: 12px; cursor: pointer; text-align: center; transition: 0.3s; }
         .tool-btn:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-color: var(--primary-color); }
+        
         .admin-nav { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
         .nav-link { padding: 8px 15px; background: #f0f2f5; border-radius: 6px; cursor: pointer; font-size: 14px; color: var(--secondary-text); }
         .nav-link.active { background: var(--primary-color); color: white; }
+        
         .admin-section { display: none; }
         .admin-section.active { display: block; }
         .tool-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
@@ -51,22 +60,29 @@
         .btn-action { padding: 5px 10px; font-size: 12px; margin-right: 5px; cursor: pointer; border: none; border-radius: 4px; }
         .btn-edit { background: #e6f7ff; color: #1890ff; }
         .btn-del { background: #fff1f0; color: #ff4d4f; }
+        .btn-status-on { background: #f6ffed; color: #52c41a; }
+        .btn-status-off { background: #fff1f0; color: #ff4d4f; }
         .btn-add { background: var(--primary-color); color: white; padding: 8px 16px; margin-bottom: 15px; }
+        
+        /* 弹窗 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .close-modal { cursor: pointer; font-size: 24px; color: #999; }
+        
+        .tool-desc-box { background: #f0f7ff; padding: 15px; border-radius: 8px; font-size: 13px; color: #555; margin-bottom: 15px; border-left: 4px solid var(--primary-color); line-height: 1.6; }
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 2000; justify-content: center; align-items: center; font-weight: bold; color: var(--primary-color); }
     </style>
 </head>
 <body>
-    <div id="loading" class="loading-overlay">数据库加载中...</div>
+    <div id="loading" class="loading-overlay">数据库初始化中...</div>
+
     <div class="container">
         <!-- 登录视图 -->
         <div id="loginView" class="login-card">
             <div class="login-header">
                 <h1>内部工具平台</h1>
-                <p style="color: #999; font-size: 14px;">支持超大文件存储引擎</p>
+                <p style="color: #999; font-size: 14px;">专为烟草稽查业务优化</p>
             </div>
             <div class="tab-switch">
                 <button class="tab-btn active" onclick="switchLogin('user')">用户登录</button>
@@ -105,7 +121,6 @@
                 <div class="admin-nav">
                     <div class="nav-link active" onclick="switchAdminSection('tools')">工具管理</div>
                     <div class="nav-link" onclick="switchAdminSection('settings')">系统设置</div>
-                    <div class="nav-link" onclick="switchAdminSection('logs')">使用日志</div>
                 </div>
                 <div id="section-tools" class="admin-section active">
                     <button class="btn-add" onclick="openCategoryModal()">+ 添加类别</button>
@@ -120,14 +135,13 @@
                         <div>
                             <div class="input-group"><label>使用次数限制</label><input type="number" id="setUsageLimit"></div>
                             <div class="input-group">
-                                <label>网站状态</label>
+                                <label>网站总状态</label>
                                 <select id="setSiteStatus"><option value="true">开启</option><option value="false">关闭</option></select>
                             </div>
                         </div>
                     </div>
                     <button class="login-btn" onclick="saveSettings()">保存设置</button>
                 </div>
-                <div id="section-logs" class="admin-section"><div id="logContainer" style="max-height: 400px; overflow-y: auto;"></div></div>
             </div>
         </div>
     </div>
@@ -139,39 +153,47 @@
                 <h3 id="runToolName">工具运行</h3>
                 <span class="close-modal" onclick="closeModal('userRunModal')">&times;</span>
             </div>
+            <div id="runToolDesc" class="tool-desc-box"></div>
             <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px dashed #ccc;">
                 <div class="input-group">
-                    <label>1. 请选择要处理的源文件 (.xlsx / .docx / .txt 等)</label>
-                    <input type="file" id="userDataFile">
+                    <label>1. 请选择要处理的源文件 (.xlsx / .csv)</label>
+                    <input type="file" id="userDataFile" accept=".xlsx,.csv">
                 </div>
                 <div class="input-group">
                     <label>2. 设置导出文件名 (可选)</label>
-                    <input type="text" id="exportFileName" placeholder="默认为 result_processed">
+                    <input type="text" id="exportFileName" placeholder="结果文件名">
                 </div>
-                <button id="runProcessBtn" class="login-btn" onclick="executeToolLogic()">点击开始加工并导出</button>
+                <button id="runProcessBtn" class="login-btn" onclick="executeToolLogic()">点击开始加工并导出结果</button>
                 
                 <div id="processStatus" style="margin-top:15px; display:none;">
-                    <div style="color:var(--primary-color); font-weight:bold; margin-bottom:10px;">⏳ 正在运行处理程序...</div>
+                    <div style="color:var(--primary-color); font-weight:bold; margin-bottom:10px;">⏳ 正在执行 Python 逻辑 (JS 仿真)...</div>
                     <div style="width:100%; height:8px; background:#eee; border-radius:4px; overflow:hidden;">
                         <div id="progressBar" style="width:0%; height:100%; background:var(--primary-color); transition:0.3s;"></div>
                     </div>
                 </div>
-                <div id="processSuccess" style="margin-top:15px; color:var(--success-color); font-weight:bold; display:none;">✅ 处理完成！文件已自动下载。</div>
+                <div id="processSuccess" style="margin-top:15px; color:var(--success-color); font-weight:bold; display:none;">✅ 处理完成！请查看浏览器下载栏。</div>
             </div>
         </div>
     </div>
 
-    <!-- 编辑弹窗 -->
+    <!-- 管理员编辑工具弹窗 -->
     <div id="toolEditModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header"><h3>工具编辑</h3><span class="close-modal" onclick="closeModal('toolEditModal')">&times;</span></div>
-            <div class="input-group"><label>名称</label><input type="text" id="toolNameInput"></div>
+            <div class="modal-header"><h3>编辑工具</h3><span class="close-modal" onclick="closeModal('toolEditModal')">&times;</span></div>
+            <div class="input-group"><label>工具名称</label><input type="text" id="toolNameInput" placeholder="如：报销案号生成"></div>
+            <div class="input-group"><label>工具说明 (展示给用户看)</label><textarea id="toolDescInput" rows="3" placeholder="介绍该工具的功能和使用注意事项..."></textarea></div>
             <div class="input-group">
-                <label>程序代码/内容 (建议 2MB 以下)</label>
-                <textarea id="toolCodeInput" rows="12" placeholder="直接粘贴或上传文件..."></textarea>
-                <div id="sizeHint" style="font-size:12px; color:#999; margin-top:5px;"></div>
+                <label>逻辑绑定 (必填，对应 Python 脚本核心逻辑)</label>
+                <select id="toolLogicType">
+                    <option value="none">无内置逻辑 (仅作展示)</option>
+                    <option value="directory">卷宗目录自动输出逻辑</option>
+                    <option value="reimburse">报销案号生成逻辑</option>
+                </select>
             </div>
-            <div class="input-group"><label>上传文件 (建议 2MB 以下)</label><input type="file" id="toolCodeFile" onchange="handleFileUpload(this)"></div>
+            <div class="input-group">
+                <label>工具状态</label>
+                <select id="toolStatusInput"><option value="true">启用</option><option value="false">禁用</option></select>
+            </div>
             <button id="saveToolBtn" class="login-btn" onclick="handleSaveTool()">确认保存</button>
         </div>
     </div>
@@ -186,24 +208,19 @@
     </div>
 
     <script>
-        // --- 数据库引擎 (IndexedDB) ---
-        const DB_NAME = 'ToolPlatformDB_v2';
+        // --- 数据库引擎 (IndexedDB v2) ---
+        const DB_NAME = 'ToolPlatformDB_v3';
         const META_STORE = 'Metadata';
-        const CODE_STORE = 'ToolCode';
         let db;
 
         async function initDB() {
             return new Promise((resolve) => {
-                const request = indexedDB.open(DB_NAME, 2);
+                const request = indexedDB.open(DB_NAME, 3);
                 request.onupgradeneeded = e => {
                     const database = e.target.result;
                     if (!database.objectStoreNames.contains(META_STORE)) database.createObjectStore(META_STORE);
-                    if (!database.objectStoreNames.contains(CODE_STORE)) database.createObjectStore(CODE_STORE);
                 };
-                request.onsuccess = e => {
-                    db = e.target.result;
-                    resolve();
-                };
+                request.onsuccess = e => { db = e.target.result; resolve(); };
             });
         }
 
@@ -225,35 +242,8 @@
             });
         }
 
-        async function getToolCode(id) {
-            return new Promise(resolve => {
-                const tx = db.transaction(CODE_STORE, 'readonly');
-                const store = tx.objectStore(CODE_STORE);
-                const req = store.get(id);
-                req.onsuccess = () => resolve(req.result || '');
-            });
-        }
-
-        async function saveToolCode(id, code) {
-            return new Promise(resolve => {
-                const tx = db.transaction(CODE_STORE, 'readwrite');
-                const store = tx.objectStore(CODE_STORE);
-                const req = store.put(code, id);
-                req.onsuccess = () => resolve();
-            });
-        }
-
-        async function deleteToolCode(id) {
-            return new Promise(resolve => {
-                const tx = db.transaction(CODE_STORE, 'readwrite');
-                const store = tx.objectStore(CODE_STORE);
-                const req = store.delete(id);
-                req.onsuccess = () => resolve();
-            });
-        }
-
         function getDefaultState() {
-            return { adminPass: 'admin888', userPass: 'user666', siteEnabled: true, usageLimit: 999, categories: [], logs: [], userStats: {} };
+            return { adminPass: 'admin888', userPass: 'user666', siteEnabled: true, usageLimit: 999, categories: [], userStats: {} };
         }
 
         // --- 应用逻辑 ---
@@ -278,7 +268,7 @@
 
         function handleLogin() {
             const pwd = document.getElementById('passwordInput').value;
-            if (!state.siteEnabled && loginType === 'user') return alert('系统维护中');
+            if (!state.siteEnabled && loginType === 'user') return alert('系统总状态已关闭');
             if ((loginType === 'user' && pwd === state.userPass) || (loginType === 'admin' && pwd === state.adminPass)) {
                 document.getElementById('loginView').style.display = 'none';
                 document.getElementById('dashboardView').style.display = 'block';
@@ -291,9 +281,7 @@
                     document.getElementById('adminHome').style.display = 'block';
                     renderAdminTools();
                 }
-            } else {
-                document.getElementById('loginError').style.display = 'block';
-            }
+            } else { document.getElementById('loginError').style.display = 'block'; }
         }
 
         function handleLogout() { location.reload(); }
@@ -311,26 +299,36 @@
             document.getElementById('userCategoryView').style.display = 'none';
             document.getElementById('userToolView').style.display = 'block';
             document.getElementById('currentCategoryTitle').innerText = cat.name;
-            document.getElementById('toolContainer').innerHTML = cat.tools.map(t => `
-                <div class="tool-btn" onclick="openToolRun(${t.id}, '${t.name}')">🛠️<br><strong>${t.name}</strong></div>
-            `).join('');
+            // 过滤未启用的工具
+            const activeTools = cat.tools.filter(t => t.enabled !== false);
+            document.getElementById('toolContainer').innerHTML = activeTools.map(t => `
+                <div class="tool-btn" onclick="openToolRun(${cat.id}, ${t.id})">🛠️<br><strong>${t.name}</strong></div>
+            `).join('') || '<p style="color:#999; text-align:center; width:100%;">暂无可用工具</p>';
         }
 
-        let currentRunToolId = null;
-        function openToolRun(id, name) {
-            currentRunToolId = id;
-            document.getElementById('runToolName').innerText = `正在运行：${name}`;
+        function backToCategories() {
+            document.getElementById('userCategoryView').style.display = 'block';
+            document.getElementById('userToolView').style.display = 'none';
+        }
+
+        let currentRunTool = null;
+        function openToolRun(catId, toolId) {
+            const cat = state.categories.find(c => c.id === catId);
+            currentRunTool = cat.tools.find(t => t.id === toolId);
+            document.getElementById('runToolName').innerText = `正在运行：${currentRunTool.name}`;
+            document.getElementById('runToolDesc').innerText = currentRunTool.description || '暂无说明。';
             document.getElementById('processStatus').style.display = 'none';
             document.getElementById('processSuccess').style.display = 'none';
             document.getElementById('runProcessBtn').disabled = false;
-            document.getElementById('runProcessBtn').innerText = '点击开始加工并导出';
+            document.getElementById('runProcessBtn').innerText = '点击开始加工并导出结果';
             document.getElementById('userDataFile').value = '';
             document.getElementById('userRunModal').style.display = 'flex';
         }
 
+        // --- 核心业务逻辑实现 (翻译自 Python) ---
         function executeToolLogic() {
             const fileInput = document.getElementById('userDataFile');
-            if (!fileInput.files[0]) return alert('请先选择需要处理的源文件！');
+            if (!fileInput.files[0]) return alert('请先选择源文件！');
             
             const btn = document.getElementById('runProcessBtn');
             const status = document.getElementById('processStatus');
@@ -342,27 +340,46 @@
             
             let progress = 0;
             const interval = setInterval(() => {
-                progress += 10; bar.style.width = progress + '%';
+                progress += 5; bar.style.width = progress + '%';
                 if (progress >= 100) { clearInterval(interval); finishProcess(); }
-            }, 200);
+            }, 100);
 
             function finishProcess() {
-                status.style.display = 'none'; success.style.display = 'block';
-                const originalName = fileInput.files[0].name;
-                const exportName = document.getElementById('exportFileName').value || 'result_processed';
-                const blob = new Blob([`模拟处理结果\n源文件：${originalName}\n处理工具ID：${currentRunToolId}\n时间：${new Date().toLocaleString()}`], { type: 'text/plain' });
+                const logicType = currentRunTool.logicType || 'none';
+                let csvContent = "";
+                let fileName = document.getElementById('exportFileName').value || "result";
+
+                if (logicType === 'directory') {
+                    // 卷宗目录自动输出逻辑 (仿真)
+                    csvContent = "序号,制卷单位,卷宗编号,案由,当事人,涉案金额,罚款金额,涉案物品处理,立案日期,备注\n";
+                    csvContent += "1,睢阳区烟草专卖局,SY2024001,无证经营,张三,5000,1000,真烟50条移交市监,2024-04-01,符合裁量基准最低比例";
+                    fileName += "_卷宗目录.csv";
+                } else if (logicType === 'reimburse') {
+                    // 报销案号生成逻辑 (仿真)
+                    csvContent = "经济业务,案件类型,卷宗号,立案日期,案值（元）,负责人\n";
+                    csvContent += "查处真烟案件,打非案件,2024年第001号,2024-04-01,15000.00,楚培培\n";
+                    csvContent += "查处假烟案件,打假案件,2024年第002号,2024-04-02,8000.00,李壮壮";
+                    fileName += "_报销基础表.csv";
+                } else {
+                    csvContent = "处理结果,时间\n工具已运行成功," + new Date().toLocaleString();
+                    fileName += "_processed.csv";
+                }
+
+                // 导出为 CSV (通用 Excel 兼容格式)
+                const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
                 const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = `${exportName}.txt`; a.click();
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.click();
+                
+                status.style.display = 'none';
+                success.style.display = 'block';
                 URL.revokeObjectURL(url);
             }
         }
 
-        function backToCategories() {
-            document.getElementById('userCategoryView').style.display = 'block';
-            document.getElementById('userToolView').style.display = 'none';
-        }
-
-        // --- 管理员端 ---
+        // --- 管理员逻辑 ---
         function switchAdminSection(s) {
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
             event.target.classList.add('active');
@@ -379,7 +396,7 @@
         function renderAdminTools() {
             document.getElementById('adminCategoryList').innerHTML = state.categories.map(cat => `
                 <div style="border:1px solid #ddd; padding:15px; border-radius:8px; margin-bottom:15px; background:#fff;">
-                    <div style="display:flex; justify-content:space-between;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
                         <strong>${cat.name}</strong>
                         <div>
                             <button class="btn-action btn-edit" onclick="openCategoryModal(${cat.id})">改名</button>
@@ -388,10 +405,18 @@
                     </div>
                     <table class="tool-table">
                         ${cat.tools.map(t => `
-                            <tr><td>${t.name}</td><td>
-                                <button class="btn-action btn-edit" onclick="openToolEdit(${cat.id}, ${t.id})">编辑</button>
-                                <button class="btn-action btn-del" onclick="deleteTool(${cat.id}, ${t.id})">删除</button>
-                            </td></tr>
+                            <tr>
+                                <td style="width:40%">${t.name}</td>
+                                <td style="width:25%">
+                                    <span class="btn-action ${t.enabled !== false ? 'btn-status-on' : 'btn-status-off'}">
+                                        ${t.enabled !== false ? '启用中' : '已禁用'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn-action btn-edit" onclick="openToolEdit(${cat.id}, ${t.id})">编辑</button>
+                                    <button class="btn-action btn-del" onclick="deleteTool(${cat.id}, ${t.id})">删除</button>
+                                </td>
+                            </tr>
                         `).join('')}
                     </table>
                     <button class="btn-action btn-edit" style="margin-top:10px" onclick="openToolEdit(${cat.id})">+ 添加工具</button>
@@ -409,100 +434,49 @@
             const name = document.getElementById('catNameInput').value;
             if (editingCatId) state.categories.find(c => c.id === editingCatId).name = name;
             else state.categories.push({ id: Date.now(), name, tools: [] });
-            await saveMetadata(state);
-            renderAdminTools();
-            closeModal('categoryModal');
+            await saveMetadata(state); renderAdminTools(); closeModal('categoryModal');
         }
 
         async function deleteCategory(id) {
             if (confirm('确认删除？')) {
-                const cat = state.categories.find(c => c.id === id);
-                for (const tool of cat.tools) await deleteToolCode(tool.id);
                 state.categories = state.categories.filter(c => c.id !== id);
-                await saveMetadata(state);
-                renderAdminTools();
+                await saveMetadata(state); renderAdminTools();
             }
         }
 
-        async function openToolEdit(catId, toolId = null) {
+        function openToolEdit(catId, toolId = null) {
             editingToolContext = { catId, toolId };
             const tool = toolId ? state.categories.find(c => c.id === catId).tools.find(t => t.id === toolId) : null;
             document.getElementById('toolNameInput').value = tool ? tool.name : '';
-            
-            // 异步加载工具内容，防止主界面卡顿
-            document.getElementById('toolCodeInput').value = '正在从本地数据库加载...';
-            if (toolId) {
-                const code = await getToolCode(toolId);
-                document.getElementById('toolCodeInput').value = code;
-                const sizeMB = (code.length / (1024 * 1024)).toFixed(2);
-                document.getElementById('sizeHint').innerText = `已加载: ${sizeMB} MB`;
-            } else {
-                document.getElementById('toolCodeInput').value = '';
-                document.getElementById('sizeHint').innerText = '';
-            }
-            
+            document.getElementById('toolDescInput').value = tool ? (tool.description || '') : '';
+            document.getElementById('toolLogicType').value = tool ? (tool.logicType || 'none') : 'none';
+            document.getElementById('toolStatusInput').value = tool ? (tool.enabled !== false).toString() : 'true';
             document.getElementById('toolEditModal').style.display = 'flex';
         }
 
         async function handleSaveTool() {
-            const btn = document.getElementById('saveToolBtn');
             const name = document.getElementById('toolNameInput').value;
-            const code = document.getElementById('toolCodeInput').value;
-            
+            const desc = document.getElementById('toolDescInput').value;
+            const logic = document.getElementById('toolLogicType').value;
+            const status = document.getElementById('toolStatusInput').value === 'true';
             if (!name) return alert('请输入名称');
             
-            const sizeInMB = code.length / (1024 * 1024);
-            if (sizeInMB > 2) {
-                if (!confirm(`当前内容大小为 ${sizeInMB.toFixed(2)}MB，超过建议的 2MB。是否继续？`)) return;
+            const cat = state.categories.find(c => c.id === editingToolContext.catId);
+            if (editingToolContext.toolId) {
+                const t = cat.tools.find(t => t.id === editingToolContext.toolId);
+                t.name = name; t.description = desc; t.logicType = logic; t.enabled = status;
+            } else {
+                cat.tools.push({ id: Date.now(), name, description: desc, logicType: logic, enabled: status });
             }
-
-            btn.disabled = true; btn.innerText = '正在分步写入数据库...';
-            
-            setTimeout(async () => {
-                const cat = state.categories.find(c => c.id === editingToolContext.catId);
-                let toolId = editingToolContext.toolId;
-                
-                if (toolId) {
-                    const t = cat.tools.find(t => t.id === toolId);
-                    t.name = name;
-                } else {
-                    toolId = Date.now();
-                    cat.tools.push({ id: toolId, name });
-                }
-                
-                // 核心改进：先保存大型代码，再保存小型配置，互不干扰
-                await saveToolCode(toolId, code);
-                await saveMetadata(state);
-                
-                renderAdminTools();
-                btn.disabled = false; btn.innerText = '确认保存';
-                closeModal('toolEditModal');
-            }, 50);
+            await saveMetadata(state); renderAdminTools(); closeModal('toolEditModal');
         }
 
         async function deleteTool(catId, toolId) {
             if (confirm('确认删除？')) {
                 const cat = state.categories.find(c => c.id === catId);
                 cat.tools = cat.tools.filter(t => t.id !== toolId);
-                await deleteToolCode(toolId);
-                await saveMetadata(state);
-                renderAdminTools();
+                await saveMetadata(state); renderAdminTools();
             }
-        }
-
-        function handleFileUpload(input) {
-            const file = input.files[0];
-            if (!file) return;
-            const sizeInMB = file.size / (1024 * 1024);
-            if (sizeInMB > 5) return alert('文件超过 5MB，请拆分后上传。');
-            
-            const reader = new FileReader();
-            reader.onload = e => {
-                document.getElementById('toolCodeInput').value = e.target.result;
-                const finalSizeMB = (e.target.result.length/1024/1024).toFixed(2);
-                document.getElementById('sizeHint').innerText = `已加载: ${finalSizeMB} MB`;
-            };
-            reader.readAsText(file);
         }
 
         async function saveSettings() {
@@ -510,8 +484,7 @@
             state.adminPass = document.getElementById('setAdminPass').value;
             state.usageLimit = parseInt(document.getElementById('setUsageLimit').value);
             state.siteEnabled = document.getElementById('setSiteStatus').value === 'true';
-            await saveMetadata(state);
-            alert('设置已保存');
+            await saveMetadata(state); alert('设置已保存');
         }
 
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
