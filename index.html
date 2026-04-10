@@ -713,7 +713,7 @@
         const GIST_CONFIG = {
             gistId: "386bbc5b4db8597ddb014a149698492c",
             fileName: "tool_config.json",
-            enabled: true // 启用 Gist 同步
+            enabled: true // 启用 Gist 同步（读取不需要认证）
         };
 
         // ================== 系统核心状态与逻辑 ==================
@@ -737,36 +737,113 @@
         let currentTool = null;
         let editingContext = { type: '', id: null };
 
+        // 显示登录界面
+        function showLogin() {
+            document.getElementById('loginView').style.display = 'block';
+            document.getElementById('dashboardView').style.display = 'none';
+        }
+
         // --- 初始化与登录 ---
         async function start() {
-            // 尝试从 localStorage 加载配置
-            const saved = localStorage.getItem('internal_tool_v6_final');
-            if (saved) {
-                state = JSON.parse(saved);
-                // 重新注册自定义工具逻辑
-                state.categories.forEach(category => {
-                    category.tools.forEach(tool => {
-                        if (tool.logic.startsWith('custom_') && tool.code) {
-                            try {
-                                const context = {
-                                    console: console,
-                                    CoreEngine: CoreEngine,
-                                    toolConfig: null
-                                };
-                                new Function('context', tool.code)(context);
-                                if (context.toolConfig && context.toolConfig.process) {
-                                    registerToolLogic(tool.logic, {
-                                        process: context.toolConfig.process,
-                                        sheetName: context.toolConfig.sheetName || tool.name,
-                                        description: context.toolConfig.description || tool.desc
-                                    });
-                                }
-                            } catch (err) {
-                                console.error('Failed to register custom tool logic:', err);
-                            }
+            // 尝试从 GitHub Gist 加载配置（读取不需要认证）
+            if (GIST_CONFIG.enabled) {
+                try {
+                    const response = await fetch(`https://api.github.com/gists/${GIST_CONFIG.gistId}`);
+                    if (response.ok) {
+                        const gist = await response.json();
+                        const file = gist.files[GIST_CONFIG.fileName];
+                        if (file && file.content) {
+                            state = JSON.parse(file.content);
+                            // 重新注册自定义工具逻辑
+                            state.categories.forEach(category => {
+                                category.tools.forEach(tool => {
+                                    if (tool.logic.startsWith('custom_') && tool.code) {
+                                        try {
+                                            const context = {
+                                                console: console,
+                                                CoreEngine: CoreEngine,
+                                                toolConfig: null
+                                            };
+                                            new Function('context', tool.code)(context);
+                                            if (context.toolConfig && context.toolConfig.process) {
+                                                registerToolLogic(tool.logic, {
+                                                    process: context.toolConfig.process,
+                                                    sheetName: context.toolConfig.sheetName || tool.name,
+                                                    description: context.toolConfig.description || tool.desc
+                                                });
+                                            }
+                                        } catch (err) {
+                                            console.error('Failed to register custom tool logic:', err);
+                                        }
+                                    }
+                                });
+                            });
+                            // 保存到 localStorage 作为备份
+                            localStorage.setItem('internal_tool_v6_final', JSON.stringify(state));
                         }
+                    }
+                } catch (err) {
+                    console.error('Failed to load config from Gist:', err);
+                    // 尝试从 localStorage 加载
+                    const saved = localStorage.getItem('internal_tool_v6_final');
+                    if (saved) {
+                        state = JSON.parse(saved);
+                        // 重新注册自定义工具逻辑
+                        state.categories.forEach(category => {
+                            category.tools.forEach(tool => {
+                                if (tool.logic.startsWith('custom_') && tool.code) {
+                                    try {
+                                        const context = {
+                                            console: console,
+                                            CoreEngine: CoreEngine,
+                                            toolConfig: null
+                                        };
+                                        new Function('context', tool.code)(context);
+                                        if (context.toolConfig && context.toolConfig.process) {
+                                            registerToolLogic(tool.logic, {
+                                                process: context.toolConfig.process,
+                                                sheetName: context.toolConfig.sheetName || tool.name,
+                                                description: context.toolConfig.description || tool.desc
+                                            });
+                                        }
+                                    } catch (err) {
+                                        console.error('Failed to register custom tool logic:', err);
+                                    }
+                                }
+                            });
+                        });
+                    }
+                }
+            } else {
+                // 从 localStorage 加载配置
+                const saved = localStorage.getItem('internal_tool_v6_final');
+                if (saved) {
+                    state = JSON.parse(saved);
+                    // 重新注册自定义工具逻辑
+                    state.categories.forEach(category => {
+                        category.tools.forEach(tool => {
+                            if (tool.logic.startsWith('custom_') && tool.code) {
+                                try {
+                                    const context = {
+                                        console: console,
+                                        CoreEngine: CoreEngine,
+                                        toolConfig: null
+                                    };
+                                    new Function('context', tool.code)(context);
+                                    if (context.toolConfig && context.toolConfig.process) {
+                                        registerToolLogic(tool.logic, {
+                                            process: context.toolConfig.process,
+                                            sheetName: context.toolConfig.sheetName || tool.name,
+                                            description: context.toolConfig.description || tool.desc
+                                        });
+                                    }
+                                } catch (err) {
+                                    console.error('Failed to register custom tool logic:', err);
+                                }
+                            }
+                        });
                     });
-                });
+                }
             }
             showLogin();
         }
