@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>内部工具平台 - 稽查终极版</title>
+    <title>内部工具平台 - 专业版</title>
     <!-- 引入核心 Excel 处理库 -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
@@ -322,7 +322,8 @@
         const GIST_CONFIG = {
             gistId: "386bbc5b4db8597ddb014a149698492c",
             fileName: "tool_config.json",
-            enabled: false // 禁用 Gist 同步，只使用 localStorage
+            enabled: true, // 启用 Gist 同步
+            token: "ghp_247P1234567890abcdefghijklmnopqrstuvwxyz" // 替换为您的GitHub个人访问令牌
         };
 
         // ================== 系统核心状态与逻辑 ==================
@@ -964,7 +965,8 @@
                 fetch(`https://api.github.com/gists/${GIST_CONFIG.gistId}`, {
                     method: 'PATCH',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `token ${GIST_CONFIG.token}`
                     },
                     body: JSON.stringify({
                         files: {
@@ -1002,7 +1004,8 @@
             fetch(`https://api.github.com/gists/${GIST_CONFIG.gistId}`, {
                 method: 'PATCH',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `token ${GIST_CONFIG.token}`
                 },
                 body: JSON.stringify({
                     files: {
