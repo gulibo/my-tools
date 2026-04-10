@@ -7,9 +7,6 @@
     <!-- 引入核心 Excel 处理库 -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
     <style>
         :root { 
             --primary-color: #0066ff; 
@@ -185,7 +182,7 @@
                     <div style="max-width: 400px; background: #f9f9f9; padding: 25px; border-radius: 12px; border: 1px solid #eee; margin-bottom: 30px;">
                         <h3 style="margin-bottom: 20px; font-size: 16px; color: var(--primary-color);">Gist同步状态</h3>
                         <div class="desc-box" style="margin-bottom: 20px;">
-                            <p>当前Gist ID: <strong id="gistIdDisplay">824266a26ea8635a691cf3d645f95d8d</strong></p>
+                            <p>当前Gist ID: <strong id="gistIdDisplay">386bbc5b4db8597ddb014a149698492c</strong></p>
                             <p>同步状态: <span id="syncStatus">未同步</span></p>
                         </div>
                         <button class="btn" onclick="syncWithGist()" style="margin-bottom: 10px;">手动同步</button>
@@ -714,8 +711,9 @@
 
         // ================== GitHub Gist 配置 ==================
         const GIST_CONFIG = {
-            gistId: "824266a26ea8635a691cf3d645f95d8d",
-            fileName: "tool_config.json"
+            gistId: "386bbc5b4db8597ddb014a149698492c",
+            fileName: "tool_config.json",
+            enabled: true // 启用 Gist 同步
         };
 
         // ================== 系统核心状态与逻辑 ==================
@@ -741,47 +739,34 @@
 
         // --- 初始化与登录 ---
         async function start() {
-            // 从GitHub Gist加载配置
-            try {
-                const response = await fetch(`https://api.github.com/gists/${GIST_CONFIG.gistId}`);
-                if (response.ok) {
-                    const gist = await response.json();
-                    const file = gist.files[GIST_CONFIG.fileName];
-                    if (file && file.content) {
-                        state = JSON.parse(file.content);
-                        // 重新注册自定义工具逻辑
-                        state.categories.forEach(category => {
-                            category.tools.forEach(tool => {
-                                if (tool.logic.startsWith('custom_') && tool.code) {
-                                    try {
-                                        const context = {
-                                            console: console,
-                                            CoreEngine: CoreEngine,
-                                            toolConfig: null
-                                        };
-                                        new Function('context', tool.code)(context);
-                                        if (context.toolConfig && context.toolConfig.process) {
-                                            registerToolLogic(tool.logic, {
-                                                process: context.toolConfig.process,
-                                                sheetName: context.toolConfig.sheetName || tool.name,
-                                                description: context.toolConfig.description || tool.desc
-                                            });
-                                        }
-                                    } catch (err) {
-                                        console.error('Failed to register custom tool logic:', err);
-                                    }
+            // 尝试从 localStorage 加载配置
+            const saved = localStorage.getItem('internal_tool_v6_final');
+            if (saved) {
+                state = JSON.parse(saved);
+                // 重新注册自定义工具逻辑
+                state.categories.forEach(category => {
+                    category.tools.forEach(tool => {
+                        if (tool.logic.startsWith('custom_') && tool.code) {
+                            try {
+                                const context = {
+                                    console: console,
+                                    CoreEngine: CoreEngine,
+                                    toolConfig: null
+                                };
+                                new Function('context', tool.code)(context);
+                                if (context.toolConfig && context.toolConfig.process) {
+                                    registerToolLogic(tool.logic, {
+                                        process: context.toolConfig.process,
+                                        sheetName: context.toolConfig.sheetName || tool.name,
+                                        description: context.toolConfig.description || tool.desc
+                                    });
                                 }
-                            });
-                        });
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to load config from Gist:', err);
-                // 尝试从localStorage加载
-                const saved = localStorage.getItem('internal_tool_v6_final');
-                if (saved) {
-                    state = JSON.parse(saved);
-                }
+                            } catch (err) {
+                                console.error('Failed to register custom tool logic:', err);
+                            }
+                        }
+                    });
+                });
             }
             showLogin();
         }
@@ -1048,114 +1033,128 @@
                 <div style="background:#f9f9f9; padding:15px; border-radius:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; border:1px solid #eee;">
                     <div><strong>${c.name}</strong> <span style="color:#999; font-size:12px;">(含有 ${c.tools.length} 个工具)</span></div>
                     <div>
-                        <span class="action-link" onclick="openCatModal(${c.id})">重命名</span>
-                        <span class="action-link danger" onclick="deleteCat(${c.id})">删除</span>
+                        <span class="action-link" onclick="openCatModal(${c.id})"><strong>重命名</strong></span>
+                        <span class="action-link danger" onclick="deleteCat(${c.id})"><strong>删除</strong></span>
                     </div>
                 </div>
             `).join('');
         }
 
+        function openCatModal(cid) {
+            editingContext = { type: 'cat', id: cid };
+            document.getElementById('editToolFields').style.display = 'none';
+            document.getElementById('editCatFields').style.display = 'block';
+            document.getElementById('editModalTitle').innerText = cid ? '重命名分类' : '新建分类';
+            document.getElementById('editCatName').value = cid ? state.categories.find(c => c.id === cid).name : '';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function deleteCat(cid) {
+            const cat = state.categories.find(c => c.id === cid);
+            if (!cat) return;
+            if (cat.tools.length > 0) return alert('该分类下还有工具，无法删除！请先将工具移动到其他分类或删除工具。');
+            if (confirm(`确定要删除分类 "${cat.name}" 吗？`)) {
+                state.categories = state.categories.filter(c => c.id !== cid);
+                addLog(`删除了分类 [${cat.name}]`);
+                saveAll();
+                renderAdminCats();
+            }
+        }
+
         function renderAdminTools() {
             const container = document.getElementById('adminToolTableContainer');
-            let html = '';
-            state.categories.forEach(c => {
-                html += `<div style="margin-bottom:30px;"><h3 style="color:var(--primary-color); border-bottom:2px solid #f0f7ff; padding-bottom:10px; margin-bottom:10px;">${c.name}</h3><table class="admin-table"><thead><tr><th>工具名称</th><th>状态</th><th>所属分类</th><th>操作</th></tr></thead><tbody>`;
-                c.tools.forEach(t => {
-                    html += `<tr>
-                        <td><strong>${t.name}</strong></td>
-                        <td><span class="status-tag ${t.enabled?'status-on':'status-off'}">${t.enabled?'启用中':'已禁用'}</span></td>
-                        <td>${c.name}</td>
-                        <td><span class="action-link" onclick="openToolEdit(${c.id}, ${t.id})">编辑属性与开关</span> <span class="action-link danger" onclick="deleteTool(${c.id}, ${t.id})">删除</span></td>
-                    </tr>`;
+            let html = '<table class="admin-table"><thead><tr><th>工具名称</th><th>所属分类</th><th>逻辑类型</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+            state.categories.forEach(cat => {
+                cat.tools.forEach(tool => {
+                    const logicConfig = ToolLogicMap[tool.logic] || { description: '自定义逻辑' };
+                    html += `
+                        <tr>
+                            <td><strong>${tool.name}</strong></td>
+                            <td>${cat.name}</td>
+                            <td>${logicConfig.description || tool.logic}</td>
+                            <td><span class="status-tag ${tool.enabled ? 'status-on' : 'status-off'}">${tool.enabled ? '启用中' : '已禁用'}</span></td>
+                            <td>
+                                <span class="action-link" onclick="openToolModal(${cat.id}, ${tool.id})"><strong>编辑属性与开关</strong></span>
+                                <span class="action-link danger" onclick="deleteTool(${cat.id}, ${tool.id})"><strong>删除</strong></span>
+                            </td>
+                        </tr>
+                    `;
                 });
-                html += `</tbody></table></div>`;
             });
+            html += '</tbody></table>';
             container.innerHTML = html;
         }
 
-        function renderAdminLogs() {
-            const container = document.getElementById('adminLogList');
-            container.innerHTML = state.logs.map(l => `<div class="log-entry">${l}</div>`).join('') || '暂无操作日志。';
-        }
-
-        // --- 弹窗逻辑 ---
-        function openCatModal(id = null) {
-            editingContext = { type: 'cat', id: id };
-            document.getElementById('editModalTitle').innerText = id ? '重命名工具分类' : '新建工具分类';
-            document.getElementById('editCatFields').style.display = 'block';
-            document.getElementById('editToolFields').style.display = 'none';
-            document.getElementById('editCatName').value = id ? state.categories.find(c => c.id === id).name : '';
-            document.getElementById('editModal').style.display = 'flex';
-        }
-
-        function updateLogicDescription() {
-            const logicType = document.getElementById('editToolLogicType').value;
-            const descriptionDiv = document.getElementById('logicDescription');
-            const logicConfig = ToolLogicMap[logicType];
+        function openToolModal(cid, tid) {
+            editingContext = { type: 'tool', catId: cid, id: tid };
+            document.getElementById('editToolFields').style.display = 'block';
+            document.getElementById('editCatFields').style.display = 'none';
+            document.getElementById('editModalTitle').innerText = tid ? '编辑工具' : '新建工具';
             
-            if (logicConfig && logicConfig.description) {
-                descriptionDiv.innerHTML = logicConfig.description;
+            // 填充分类下拉
+            const catSelect = document.getElementById('editToolCatSelect');
+            catSelect.innerHTML = state.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            
+            if (tid) {
+                const tool = state.categories.find(c => c.id === cid).tools.find(t => t.id === tid);
+                document.getElementById('editToolName').value = tool.name;
+                document.getElementById('editToolCatSelect').value = cid;
+                document.getElementById('toolCreateType').value = tool.logic.startsWith('custom_') ? 'upload' : 'template';
+                document.getElementById('editToolLogicType').value = tool.logic;
+                document.getElementById('editToolDesc').value = tool.desc;
+                document.getElementById('editToolStatus').value = tool.enabled.toString();
+                toggleToolCreateMethod();
+                updateLogicDescription();
             } else {
-                descriptionDiv.innerHTML = '请选择工具逻辑类型';
+                document.getElementById('editToolName').value = '';
+                document.getElementById('toolCreateType').value = 'template';
+                document.getElementById('editToolLogicType').value = 'directory';
+                document.getElementById('editToolDesc').value = '';
+                document.getElementById('editToolStatus').value = 'true';
+                toggleToolCreateMethod();
+                updateLogicDescription();
             }
+            document.getElementById('editModal').style.display = 'flex';
         }
 
         function toggleToolCreateMethod() {
-            const createType = document.getElementById('toolCreateType').value;
-            document.getElementById('templateMethod').style.display = createType === 'template' ? 'block' : 'none';
-            document.getElementById('uploadMethod').style.display = createType === 'upload' ? 'block' : 'none';
+            const type = document.getElementById('toolCreateType').value;
+            document.getElementById('templateMethod').style.display = type === 'template' ? 'block' : 'none';
+            document.getElementById('uploadMethod').style.display = type === 'upload' ? 'block' : 'none';
         }
 
-        function openToolModal(cid = null, tid = null) {
-            if (tid) {
-                editingContext = { type: 'tool', id: tid, oldCid: cid };
-                const tool = state.categories.find(c => c.id === cid).tools.find(t => t.id === tid);
-                document.getElementById('editModalTitle').innerText = '编辑工具属性';
-                document.getElementById('editToolName').value = tool.name;
-                document.getElementById('editToolDesc').value = tool.desc;
-                document.getElementById('editToolStatus').value = tool.enabled.toString();
-                
-                // 检测工具类型
-                const isCustomTool = tool.logic.startsWith('custom_');
-                document.getElementById('toolCreateType').value = isCustomTool ? 'upload' : 'template';
-                
-                if (!isCustomTool) {
-                    document.getElementById('editToolLogicType').value = tool.logic;
-                }
+        function updateLogicDescription() {
+            const logic = document.getElementById('editToolLogicType').value;
+            const desc = document.getElementById('logicDescription');
+            const logicConfig = ToolLogicMap[logic];
+            if (logicConfig) {
+                desc.innerText = logicConfig.description;
             } else {
-                editingContext = { type: 'tool', id: null, oldCid: null };
-                document.getElementById('editModalTitle').innerText = '新建工具';
-                document.getElementById('editToolName').value = '';
-                document.getElementById('editToolDesc').value = '';
-                document.getElementById('editToolStatus').value = 'true';
-                document.getElementById('toolCreateType').value = 'template';
-                document.getElementById('editToolLogicType').value = 'directory';
+                desc.innerText = '自定义逻辑类型';
             }
-            document.getElementById('editCatFields').style.display = 'none';
-            document.getElementById('editToolFields').style.display = 'block';
-            
-            const catSelect = document.getElementById('editToolCatSelect');
-            catSelect.innerHTML = state.categories.map(c => `<option value="${c.id}" ${c.id===cid?'selected':''}>${c.name}</option>`).join('');
-            
-            // 切换工具创建方式
-            toggleToolCreateMethod();
-            // 更新逻辑类型描述
-            updateLogicDescription();
-            
-            document.getElementById('editModal').style.display = 'flex';
         }
 
-        function openToolEdit(cid, tid) {
-            openToolModal(cid, tid);
+        function deleteTool(cid, tid) {
+            const cat = state.categories.find(c => c.id === cid);
+            const tool = cat.tools.find(t => t.id === tid);
+            if (!tool) return;
+            if (confirm(`确定要删除工具 "${tool.name}" 吗？`)) {
+                cat.tools = cat.tools.filter(t => t.id !== tid);
+                addLog(`删除了工具 [${tool.name}]`);
+                saveAll();
+                renderAdminTools();
+            }
         }
 
         function handleModalSave() {
             if (editingContext.type === 'cat') {
                 const name = document.getElementById('editCatName').value.trim();
-                if (!name) return alert('名称不能为空');
+                if (!name) return alert('分类名称不能为空');
+                
                 if (editingContext.id) {
-                    state.categories.find(c => c.id === editingContext.id).name = name;
-                    addLog(`重命名了分类 ID:${editingContext.id} 为 [${name}]`);
+                    const cat = state.categories.find(c => c.id === editingContext.id);
+                    cat.name = name;
+                    addLog(`修改了分类名称为 [${name}]`);
                 } else {
                     state.categories.push({ id: Date.now(), name: name, tools: [] });
                     addLog(`新建了分类 [${name}]`);
@@ -1171,19 +1170,19 @@
                 
                 if (editingContext.id) {
                     // 编辑现有工具
-                    let oldCat = state.categories.find(c => c.id === editingContext.oldCid);
-                    let toolIdx = oldCat.tools.findIndex(t => t.id === editingContext.id);
-                    let tool = oldCat.tools.splice(toolIdx, 1)[0];
-                    
+                    const oldCat = state.categories.find(c => c.id === editingContext.catId);
+                    const tool = oldCat.tools.find(t => t.id === editingContext.id);
                     tool.name = name;
                     tool.desc = desc;
                     tool.enabled = status;
-                    if (createType === 'template') {
-                        tool.logic = document.getElementById('editToolLogicType').value;
-                    }
                     
-                    state.categories.find(c => c.id === newCid).tools.push(tool);
-                    addLog(`修改了工具 [${name}] 的属性，状态: ${status ? '启用' : '禁用'}`);
+                    if (editingContext.catId !== newCid) {
+                        oldCat.tools = oldCat.tools.filter(t => t.id !== editingContext.id);
+                        state.categories.find(c => c.id === newCid).tools.push(tool);
+                        addLog(`将工具 [${name}] 移动到了分类 [${state.categories.find(c => c.id === newCid).name}]`);
+                    } else {
+                        addLog(`修改了工具 [${name}]`);
+                    }
                 } else {
                     // 创建新工具
                     if (createType === 'template') {
@@ -1192,7 +1191,7 @@
                             id: Date.now(),
                             name: name,
                             logic: logic,
-                            enabled: status,
+                            enabled: true,
                             desc: desc
                         };
                         state.categories.find(c => c.id === newCid).tools.push(newTool);
@@ -1206,7 +1205,6 @@
                             try {
                                 // 执行代码文件
                                 const code = e.target.result;
-                                const toolModule = {};
                                 const context = {
                                     console: console,
                                     CoreEngine: CoreEngine,
@@ -1217,7 +1215,7 @@
                                 new Function('context', code)(context);
                                 
                                 if (!context.toolConfig || !context.toolConfig.process) {
-                                    throw new Error('代码文件格式错误：缺少toolConfig或process函数');
+                                    throw new Error('代码文件格式错误：缺少 toolConfig 或 process 函数');
                                 }
                                 
                                 const logicType = 'custom_' + Date.now();
@@ -1231,7 +1229,7 @@
                                     id: Date.now(),
                                     name: name,
                                     logic: logicType,
-                                    enabled: status,
+                                    enabled: true,
                                     desc: desc,
                                     code: code // 保存代码以便后续编辑
                                 };
@@ -1257,128 +1255,87 @@
             currentRole === 'admin' ? (editingContext.type === 'cat' ? switchAdminSection('cat') : switchAdminSection('tool')) : renderUserCats();
         }
 
-        function deleteCat(id) {
-            const cat = state.categories.find(c => c.id === id);
-            if (cat.tools.length > 0) return alert('该分类下仍有工具，请先将工具移动到其他分类后再删除！');
-            if (confirm(`确认删除分类 [${cat.name}] 吗？`)) {
-                state.categories = state.categories.filter(c => c.id !== id);
-                addLog(`删除了分类 [${cat.name}]`);
-                saveAll(); renderAdminCats();
-            }
+        function renderAdminLogs() {
+            const container = document.getElementById('adminLogList');
+            container.innerHTML = state.logs.slice().reverse().map(log => `
+                <div class="log-entry">
+                    <span class="log-time">${log.time}</span>
+                    <span class="log-user">${log.user}</span>
+                    <span>${log.action}</span>
+                </div>
+            `).join('');
         }
 
-        function deleteTool(cid, tid) {
-            const cat = state.categories.find(c => c.id === cid);
-            const tool = cat.tools.find(t => t.id === tid);
-            if (confirm(`确认删除工具 [${tool.name}] 吗？`)) {
-                cat.tools = cat.tools.filter(t => t.id !== tid);
-                addLog(`删除了工具 [${tool.name}]`);
-                saveAll(); renderAdminTools();
-            }
-        }
-
-        // --- 系统辅助 ---
-        function addLog(msg) {
-            const entry = `<span class="log-time">[${new Date().toLocaleString()}]</span><span class="log-user">系统</span> ${msg}`;
-            state.logs.unshift(entry);
-            if (state.logs.length > 100) state.logs.pop();
-            saveAll();
-        }
         function saveAdminSettings() {
-            state.userPass = document.getElementById('setUserPassInput').value;
-            state.adminPass = document.getElementById('setAdminPassInput').value;
-            addLog('修改了系统安全密码');
-            saveAll(); alert('密码修改成功，新密码已立即生效。');
+            const userPass = document.getElementById('setUserPassInput').value.trim();
+            const adminPass = document.getElementById('setAdminPassInput').value.trim();
+            
+            if (userPass) {
+                state.userPass = userPass;
+                addLog('修改了用户端密码');
+            }
+            if (adminPass) {
+                state.adminPass = adminPass;
+                addLog('修改了管理员密码');
+            }
+            
+            saveAll();
+            alert('设置已保存');
         }
+
+        function addLog(action) {
+            state.logs.push({
+                time: new Date().toLocaleString('zh-CN'),
+                user: currentRole === 'admin' ? '管理员' : '普通用户',
+                action: action
+            });
+            if (state.logs.length > 1000) state.logs = state.logs.slice(-1000);
+        }
+
         function saveAll() {
-            // 保存到localStorage作为备份
+            // 保存到 localStorage
             localStorage.setItem('internal_tool_v6_final', JSON.stringify(state));
             
-            // 尝试保存到GitHub Gist
-            fetch(`https://api.github.com/gists/${GIST_CONFIG.gistId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    files: {
-                        [GIST_CONFIG.fileName]: {
-                            content: JSON.stringify(state, null, 2)
+            // 尝试保存到 GitHub Gist（如果启用）
+            if (GIST_CONFIG.enabled) {
+                fetch(`https://api.github.com/gists/${GIST_CONFIG.gistId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        files: {
+                            [GIST_CONFIG.fileName]: {
+                                content: JSON.stringify(state, null, 2)
+                            }
                         }
+                    })
+                })
+                .then(response => {
+                    if (response.ok) {
+                        console.log('Config saved to Gist successfully');
+                    } else {
+                        console.error('Failed to save config to Gist:', response.status);
                     }
                 })
-            })
-            .then(response => {
-                if (response.ok) {
-                    console.log('Config saved to Gist successfully');
-                } else {
-                    console.error('Failed to save config to Gist:', response.status);
-                }
-            })
-            .catch(error => {
-                console.error('Error saving config to Gist:', error);
-            });
-        }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function backToCategories() { renderUserCats(); }
-        function showLogin() { 
-            document.getElementById('loginView').style.display = 'block';
-            document.getElementById('dashboardView').style.display = 'none';
+                .catch(error => {
+                    console.error('Error saving config to Gist:', error);
+                });
+            }
         }
 
-        // 配置导出功能
-        function exportConfig() {
-            const config = {
-                version: '1.0',
-                exportDate: new Date().toISOString(),
-                data: state
-            };
-            
-            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `tool_config_${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-            
-            addLog('导出了系统配置');
-            alert('配置导出成功！');
-        }
-
-        // 配置导入功能
-        function importConfig(input) {
-            const file = input.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const config = JSON.parse(e.target.result);
-                    if (config.data) {
-                        state = config.data;
-                        saveAll();
-                        addLog('导入了系统配置');
-                        alert('配置导入成功！系统将刷新以应用新配置。');
-                        location.reload();
-                    } else {
-                        alert('配置文件格式错误！');
-                    }
-                } catch (err) {
-                    alert('配置文件解析失败：' + err.message);
-                } finally {
-                    input.value = '';
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        // Gist同步功能
         function syncWithGist() {
             const statusElement = document.getElementById('syncStatus');
+            if (!GIST_CONFIG.enabled) {
+                statusElement.textContent = 'Gist 同步已禁用';
+                statusElement.style.color = '#666';
+                alert('Gist 同步已暂时禁用，请使用配置导出/导入功能进行同步。');
+                return;
+            }
+            
             statusElement.textContent = '同步中...';
             
-            // 保存到Gist
+            // 保存到 Gist
             fetch(`https://api.github.com/gists/${GIST_CONFIG.gistId}`, {
                 method: 'PATCH',
                 headers: {
@@ -1396,7 +1353,7 @@
                 if (response.ok) {
                     statusElement.textContent = '同步成功';
                     statusElement.style.color = 'var(--success-color)';
-                    addLog('手动同步配置到Gist');
+                    addLog('手动同步配置到 Gist');
                 } else {
                     statusElement.textContent = '同步失败';
                     statusElement.style.color = 'var(--danger-color)';
@@ -1409,18 +1366,83 @@
             });
         }
 
-        // 重置Gist配置
         function resetGistConfig() {
-            const newGistId = prompt('请输入新的Gist ID:');
+            const newGistId = prompt('请输入新的 Gist ID:');
             if (newGistId) {
                 GIST_CONFIG.gistId = newGistId;
                 document.getElementById('gistIdDisplay').textContent = newGistId;
-                addLog('重置了Gist配置');
-                alert('Gist配置已更新，请手动同步配置');
+                addLog('重置了 Gist 配置');
+                alert('Gist 配置已更新，请手动同步配置');
             }
         }
 
-        start();
+        function exportConfig() {
+            const dataStr = JSON.stringify(state, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `tool_config_${new Date().toISOString().slice(0,10)}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            addLog('导出了系统配置');
+        }
+
+        function importConfig(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    state = config;
+                    // 重新注册自定义工具逻辑
+                    state.categories.forEach(category => {
+                        category.tools.forEach(tool => {
+                            if (tool.logic.startsWith('custom_') && tool.code) {
+                                try {
+                                    const context = {
+                                        console: console,
+                                        CoreEngine: CoreEngine,
+                                        toolConfig: null
+                                    };
+                                    new Function('context', tool.code)(context);
+                                    if (context.toolConfig && context.toolConfig.process) {
+                                        registerToolLogic(tool.logic, {
+                                            process: context.toolConfig.process,
+                                            sheetName: context.toolConfig.sheetName || tool.name,
+                                            description: context.toolConfig.description || tool.desc
+                                        });
+                                    }
+                                } catch (err) {
+                                    console.error('Failed to register custom tool logic:', err);
+                                }
+                            }
+                        });
+                    });
+                    addLog('导入了系统配置');
+                    saveAll();
+                    alert('配置导入成功！系统将自动刷新。');
+                    location.reload();
+                } catch (err) {
+                    alert('配置文件格式错误，导入失败！');
+                }
+            };
+            reader.readAsText(file);
+            input.value = ''; // 清除输入
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function backToCategories() {
+            renderUserCats();
+        }
+
+        // 启动系统
+        window.onload = start;
     </script>
 </body>
 </html>
