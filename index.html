@@ -61,6 +61,7 @@
         
         .admin-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         .admin-table th, .admin-table td { padding: 15px; border-bottom: 1px solid #eee; font-size: 14px; text-align: left; }
+        .admin-table td:nth-child(3) { max-width: 200px; word-wrap: break-word; }
         .admin-table th { background: #fafafa; font-weight: 600; color: #666; }
         
         .status-tag { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
@@ -235,55 +236,33 @@
             <!-- 工具编辑字段 -->
             <div id="editToolFields">
                 <div class="input-group">
-                    <label>工具名称</label>
-                    <input type="text" id="editToolName">
-                </div>
-                <div class="input-group">
                     <label>所属分类</label>
                     <select id="editToolCatSelect"></select>
                 </div>
                 <div class="input-group">
                     <label>工具创建方式</label>
                     <select id="toolCreateType" onchange="toggleToolCreateMethod()">
-                        <option value="template">使用现有模板</option>
                         <option value="upload">上传代码文件</option>
                     </select>
                 </div>
                 
-                <!-- 模板方式 -->
-                <div id="templateMethod">
-                    <div class="input-group">
-                        <label>工具逻辑类型</label>
-                        <select id="editToolLogicType" onchange="updateLogicDescription()">
-                            <option value="directory">卷宗目录生成</option>
-                            <option value="reimburse">报销案号生成</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>逻辑类型说明</label>
-                        <div id="logicDescription" style="background: #f0f7ff; padding: 12px; border-radius: 8px; font-size: 13px; color: #555; border-left: 4px solid var(--primary-color);">
-                            请选择工具逻辑类型
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- 上传代码方式 -->
-                <div id="uploadMethod" style="display: none;">
+                <div id="uploadMethod">
                     <div class="input-group">
                         <label>上传工具代码文件 (.js)</label>
                         <input type="file" id="toolCodeInput" accept=".js">
                     </div>
                     <div class="input-group">
+                        <label>工具说明</label>
+                        <textarea id="editToolDesc" placeholder="请输入工具说明（可选）" rows="3"></textarea>
+                    </div>
+                    <div class="input-group">
                         <label>代码文件说明</label>
                         <div class="desc-box">
                             <p>请上传符合规范的JavaScript文件，包含工具信息和处理逻辑。</p>
-                            <p>文件格式要求：包含toolConfig对象和process函数。</p>
+                            <p>文件格式要求：包含toolConfig对象和process函数，其中name字段为工具名称。</p>
                         </div>
                     </div>
-                </div>
-                <div class="input-group">
-                    <label>工具说明 (展示给用户)</label>
-                    <textarea id="editToolDesc" rows="4" placeholder="请详细描述该工具的功能、上传文件要求及处理逻辑..."></textarea>
                 </div>
                 <div class="input-group">
                     <label>运行状态</label>
@@ -306,9 +285,9 @@
     </div>
 
     <script>
-        // ================== 核心业务引擎 (像素级复刻 Python 逻辑) ==================
+        // ================== 核心业务引擎 ==================
         const CoreEngine = {
-            // 辅助：数值清洗函数 (复刻 Python: parse_amount)
+            // 辅助：数值清洗函数
             parseAmount: function(val) {
                 if (val === undefined || val === null || val === '') return 0.0;
                 let s = String(val).trim();
@@ -322,382 +301,12 @@
                 }
                 let num = parseFloat(cleaned);
                 return isNaN(num) ? 0.0 : num;
-            },
-
-            // 1. 卷宗目录输出逻辑 (复刻：卷宗目录自动输出2.0.py)
-            processDirectory: function(data) {
-                // A. 自动查找“案件编号”所在行 (表头行)
-                let headerRowIdx = -1;
-                for (let i = 0; i < Math.min(30, data.length); i++) {
-                    if (data[i] && data[i].some(cell => String(cell).includes('案件编号'))) {
-                        headerRowIdx = i;
-                        break;
-                    }
-                }
-                if (headerRowIdx === -1) throw new Error("Excel中未找到包含‘案件编号’的表头行，请检查文件格式。");
-
-                // B. 动态列定位 (复刻 Python: find_col)
-                const colNames = data[headerRowIdx].map(v => String(v || '').trim());
-                const findCol = (keywords) => {
-                    return colNames.findIndex(name => keywords.some(kw => name.includes(kw)));
-                };
-
-                const caseNoCol = findCol(['案件编号']);
-                const partyCol = findCol(['当事人']);
-                const occurTimeCol = findCol(['案发时间']);
-                const closeTimeCol = findCol(['结案时间']);
-                let causeCol = findCol(['案件性质']);
-                if (causeCol === -1) causeCol = findCol(['案由']);
-                const officeCol = findCol(['查获单位', '制卷单位']);
-
-                if (caseNoCol === -1 || partyCol === -1 || occurTimeCol === -1 || causeCol === -1) {
-                    throw new Error("Excel中缺少必要列（案件编号/当事人/案发时间/案由），请检查文件。");
-                }
-
-                // C. 真烟、假烟列 (从第3行，索引2)
-                const row3 = data[2] || [];
-                const row4 = data[3] || [];
-                const row5 = data[4] || [];
-                let trueCol = -1, falseCol = -1;
-                for (let j = 0; j < row3.length; j++) {
-                    let val = String(row3[j] || '');
-                    if (val.includes('真')) trueCol = j;
-                    if (val.includes('假')) falseCol = j;
-                }
-                if (trueCol === -1 || falseCol === -1) throw new Error("未找到第3行中的真烟/假烟列。");
-
-                // D. 确定合计范围
-                let startCol = -1, endCol = -1;
-                for (let j = 0; j < row3.length; j++) {
-                    if (String(row3[j] || '').includes('合计')) {
-                        startCol = j;
-                        for (let k = startCol + 1; k < row3.length; k++) {
-                            let val = String(row3[k] || '');
-                            if (val && val !== 'nan' && (val.includes('真') || val.includes('假'))) {
-                                endCol = k - 1;
-                                break;
-                            }
-                        }
-                        if (endCol === -1) endCol = row3.length - 1;
-                        break;
-                    }
-                }
-                if (startCol === -1) throw new Error("未找到第3行中的‘合计’单元格");
-
-                // E. 识别案值列 (第5行在合计范围内包含“案值”和“元”)
-                let amountCols = [];
-                for (let j = startCol; j <= endCol; j++) {
-                    let val = String(row5[j] || "");
-                    if (val.includes('案值') && val.includes('元')) amountCols.push(j);
-                }
-                if (amountCols.length === 0) throw new Error(`在第5行合计列范围（${startCol}-${endCol}）内未找到任何‘案值（元）’列`);
-
-                // F. 识别涉案物品类别 (第3行合计范围内，排除合计本身)
-                let itemCategories = [];
-                for (let j = startCol; j <= endCol; j++) {
-                    let catName = String(row3[j] || '');
-                    if (catName.includes('合计')) continue;
-                    let subHeader = String(row4[j] || '');
-                    if (!subHeader.includes('案值') && subHeader.includes('数量')) {
-                        itemCategories.push({ col: j, name: catName });
-                    } else if (catName && catName !== 'nan' && catName !== '') {
-                        itemCategories.push({ col: j, name: catName });
-                    }
-                }
-
-                // G. 检索O-AQ (14-42) 列物品信息
-                let oAqItemCategories = [];
-                for (let j = 14; j <= 42; j++) {
-                    if (itemCategories.some(cat => cat.col === j)) continue;
-                    let cat4 = String(row4[j] || '');
-                    let cat3 = String(row3[j] || '');
-                    let categoryName = '';
-                    if (cat4 && cat4 !== 'nan' && cat4 !== '') categoryName = cat4;
-                    else if (cat3 && cat3 !== 'nan' && cat3 !== '' && !cat3.includes('合计')) categoryName = cat3;
-                    
-                    if (categoryName) {
-                        let unit = '';
-                        let val5 = String(row5[j] || '');
-                        ['条', '支', '公斤', '万支', '个', '台', '万张'].forEach(u => {
-                            if (val5.includes(u)) unit = u;
-                        });
-                        oAqItemCategories.push({ col: j, name: categoryName, unit: unit });
-                    }
-                }
-
-                // H. 业务规则常量
-                const RATIO_MAP = {
-                    'transport_light': 0.20, 'transport_medium': 0.30, 'transport_heavy': 0.40,
-                    'not_local_light': 0.05, 'not_local_medium': 0.07, 'not_local_heavy': 0.09,
-                    'wholesale_light': 0.50, 'wholesale_medium': 0.70, 'wholesale_heavy': 0.90,
-                    'produce_light': 1.00, 'produce_medium': 1.30, 'produce_heavy': 1.60,
-                };
-                const CAUSE_MAP = {
-                    '无烟草专卖品准运证运输': '无烟草专卖品准运证运输烟草专卖品',
-                    '未在当地烟草专卖批发企业进货': '未在当地烟草专卖批发企业进货',
-                    '销售非法生产的烟草专卖品': '销售非法生产的烟草专卖品',
-                    '无烟草专卖零售许可证经营': '无烟草专卖零售许可证经营烟草制品零售业务',
-                    '无证生产卷烟纸、滤嘴棒、烟用丝束、烟草专用机械': '无烟草专卖生产企业许可证生产卷烟纸、滤嘴棒、烟用丝束或者烟草专用机械',
-                    '无证生产烟草制品': '无烟草专卖生产企业许可证生产烟草制品',
-                    '无烟草专卖批发企业许可证批发': '无烟草专卖批发企业许可证批发烟草制品',
-                };
-
-                // I. 核心处理逻辑
-                let cases = [];
-                for (let i = headerRowIdx + 1; i < data.length; i++) {
-                    let row = data[i];
-                    if (!row || !row[caseNoCol] || String(row[caseNoCol]).trim() === '') continue;
-
-                    let caseNo = String(row[caseNoCol]).trim();
-                    let party = String(row[partyCol] || "").trim();
-                    let occurTime = String(row[occurTimeCol] || "").trim();
-                    let closeTime = (closeTimeCol !== -1) ? String(row[closeTimeCol] || "").trim() : "";
-                    let rawCause = String(row[causeCol] || "").trim();
-                    let office = (officeCol !== -1) ? String(row[officeCol] || "").trim() : "睢阳区烟草专卖局";
-
-                    let totalAmount = 0.0;
-                    amountCols.forEach(col => totalAmount += this.parseAmount(row[col]));
-                    let trueQty = this.parseAmount(row[trueCol]);
-                    let falseQty = this.parseAmount(row[falseCol]);
-
-                    let otherItems = [];
-                    itemCategories.forEach(cat => {
-                        if (cat.col === trueCol || cat.col === falseCol) return;
-                        let qty = this.parseAmount(row[cat.col]);
-                        if (qty > 0) {
-                            let unit = '';
-                            let subHeader = String(row4[cat.col] || '');
-                            ['条', '支', '公斤', '万支', '个', '台', '万张'].forEach(u => {
-                                if (subHeader.includes(u)) unit = u;
-                            });
-                            otherItems.push({ name: cat.name, qty: qty, unit: unit });
-                        }
-                    });
-
-                    // 补充 O-AQ 物品
-                    if (trueQty === 0 && falseQty === 0 && otherItems.length === 0) {
-                        oAqItemCategories.forEach(cat => {
-                            let qty = this.parseAmount(row[cat.col]);
-                            if (qty > 0) {
-                                let unit = cat.unit;
-                                if (!unit) {
-                                    let val5 = String(row5[cat.col] || '');
-                                    ['条', '支', '公斤', '万支', '个', '台', '万张'].forEach(u => {
-                                        if (val5.includes(u)) unit = u;
-                                    });
-                                }
-                                otherItems.push({ name: cat.name, qty: qty, unit: unit });
-                            }
-                        });
-                    }
-
-                    // 日期提取
-                    let filingDate = '';
-                    let dateMatch = occurTime.match(/(\d{4}-\d{2}-\d{2})/);
-                    if (dateMatch) filingDate = dateMatch[1];
-
-                    // 匿名判断
-                    let isAnonymous = !party || party.includes('现场未发现当事人') || party.includes('*');
-
-                    // 标准化案由与修正
-                    let finalCause = rawCause;
-                    for (let key in CAUSE_MAP) if (rawCause.includes(key)) { finalCause = CAUSE_MAP[key]; break; }
-
-                    let disposal = "销毁";
-                    let remark = "";
-                    if (rawCause.includes('销售非法生产的烟草专卖品') && trueQty > 0 && falseQty === 0 && otherItems.length === 0) {
-                        finalCause = '无烟草专卖零售许可证经营烟草制品零售业务';
-                        disposal = `涉案卷烟 ${trueQty} 条移交市场监督管理局处理`;
-                        remark = "原案由为销售非法生产的烟草专卖品，但物品为真烟，已改为无证经营";
-                    } else {
-                        if (isAnonymous) {
-                            let parts = [];
-                            if (trueQty > 0) parts.push(`真烟 ${trueQty} 条依法没收`);
-                            if (falseQty > 0) parts.push(`假烟 ${falseQty} 条统一公开销毁`);
-                            otherItems.forEach(it => parts.push(`${it.name} ${it.qty} ${it.unit}统一公开销毁`));
-                            disposal = parts.join('；') || "无涉案物品";
-                            remark = "无主/匿名案件，不罚款不返还";
-                        } else if (rawCause.includes('无烟草专卖品准运证运输') && trueQty > 0 && (trueQty * 200 > 50000 || totalAmount > 200000)) {
-                            let parts = [`真烟 ${trueQty} 条（数量/案值超限）依法没收`];
-                            if (falseQty > 0) parts.push(`假烟 ${falseQty} 条统一公开销毁`);
-                            otherItems.forEach(it => parts.push(`${it.name} ${it.qty} ${it.unit}统一公开销毁`));
-                            disposal = parts.join('；');
-                            remark = "无证运输超限，依法没收";
-                        } else if (totalAmount >= 50000 && (finalCause.includes('运输') || finalCause.includes('销售非法') || finalCause.includes('无证经营') || finalCause.includes('无证生产'))) {
-                            disposal = "涉案物品随案移送公安机关";
-                            remark = "涉嫌犯罪，移送司法机关";
-                        } else {
-                            let parts = [];
-                            if (trueQty > 0) {
-                                if (rawCause.includes('无烟草专卖品准运证运输') || rawCause.includes('未在当地烟草专卖批发企业进货')) parts.push(`真烟 ${trueQty} 条依法返还当事人`);
-                                else if (rawCause.includes('销售非法生产的烟草专卖品')) parts.push(`真烟 ${trueQty} 条（非法生产）统一公开销毁`);
-                                else if (rawCause.includes('无烟草专卖零售许可证经营')) parts.push(`真烟 ${trueQty} 条移交市场监督管理局处理`);
-                                else parts.push(`真烟 ${trueQty} 条依法处理`);
-                            }
-                            if (falseQty > 0) parts.push(`假烟 ${falseQty} 条统一公开销毁`);
-                            otherItems.forEach(it => parts.push(`${it.name} ${it.qty} ${it.unit}统一公开销毁`));
-                            disposal = parts.join('；') || "无涉案物品";
-
-                            if (rawCause.includes('无烟草专卖零售许可证经营') && totalAmount < 50000 && !isAnonymous) {
-                                let totalQty = trueQty + falseQty;
-                                let newParts = [`涉案卷烟 ${totalQty} 条移交市场监督管理局处理`];
-                                if (falseQty > 0) newParts.push(`假烟 ${falseQty} 条统一公开销毁`);
-                                otherItems.forEach(it => newParts.push(`${it.name} ${it.qty} ${it.unit}统一公开销毁`));
-                                disposal = newParts.join('；');
-                                remark = "无证经营";
-                            }
-                        }
-                    }
-
-                    // 罚款
-                    let fine = 0.0;
-                    let skipFine = isAnonymous || falseQty > 0 || otherItems.length > 0 || rawCause.includes('销售非法生产的烟草专卖品');
-                    if (rawCause.includes('无烟草专卖品准运证运输') && trueQty > 0 && (trueQty * 200 > 50000 || totalAmount > 200000)) skipFine = true;
-                    if (!skipFine) {
-                        if (finalCause.includes('运输')) {
-                            let r = totalAmount < 10000 ? RATIO_MAP.transport_light : (totalAmount < 30000 ? RATIO_MAP.transport_medium : RATIO_MAP.transport_heavy);
-                            fine = totalAmount * r;
-                        } else if (finalCause.includes('未在当地')) {
-                            let r = totalAmount < 1000 ? RATIO_MAP.not_local_light : (totalAmount < 5000 ? RATIO_MAP.not_local_medium : RATIO_MAP.not_local_heavy);
-                            fine = totalAmount * r;
-                        } else if (finalCause.includes('批发')) {
-                            let t = trueQty + falseQty;
-                            let r = t < 100 ? RATIO_MAP.wholesale_light : (t < 200 ? RATIO_MAP.wholesale_medium : RATIO_MAP.wholesale_heavy);
-                            fine = totalAmount * r;
-                        } else if (finalCause.includes('生产')) {
-                            let r = totalAmount < 10000 ? RATIO_MAP.produce_light : (totalAmount < 30000 ? RATIO_MAP.produce_medium : RATIO_MAP.produce_heavy);
-                            fine = totalAmount * r;
-                        }
-                    }
-
-                    cases.push({
-                        unit: office, caseNo: caseNo, cause: finalCause, party: party || "无",
-                        amount: totalAmount, fine: fine, disposal: disposal,
-                        filingDate: filingDate, closeDate: closeTime, remark: remark
-                    });
-                }
-
-                // J. 导出
-                let results = [
-                    ["抽取行政处罚案卷目录"],
-                    ["序号", "制卷单位", "卷宗编号", "案由", "当事人", "涉案金额(元)", "罚款金额(元)", "涉案物品处理", "立案日期", "结案日期", "归档日期", "备注"]
-                ];
-                cases.reverse().forEach((c, idx) => {
-                    results.push([
-                        idx + 1, c.unit, c.caseNo, c.cause, c.party,
-                        c.amount, c.fine, c.disposal,
-                        c.filingDate, c.closeDate, c.closeDate, c.remark
-                    ]);
-                });
-                return results;
-            },
-
-            // 2. 报销案号生成逻辑 (复刻：报销案号生成2.0.py)
-            processReimburse: function(data) {
-                // A. 数据筛选：header=1, skiprows=[0] 意味着：
-                // 原文件第1行跳过，原文件第3行为表头，原文件第4行开始为数据
-                // 在 sheet_to_json(header: 1) 中：data[0]=Row1, data[1]=Row2, data[2]=Row3, data[3]=Row4
-                const headerRow = data[2] || [];
-                const colNames = headerRow.map(v => String(v || '').trim());
-                
-                const findCol = (keywords) => {
-                    return colNames.findIndex(name => keywords.some(kw => name.includes(kw)));
-                };
-
-                const caseNoIdx = findCol(['案件编号']);
-                const deptIdx = findCol(['承办部门']);
-                const regIdx = findCol(['立案时间']);
-                const incidentIdx = findCol(['案发时间']);
-
-                if (caseNoIdx === -1) throw new Error("Excel中未找到‘案件编号’列，请检查文件格式。");
-
-                const leaderMap = {
-                    "市场监管一队": "楚培培", "市场监管二队": "李壮壮", "市场监管三队": "陈杰", "市场监管四队": "张亚东",
-                    "打假打私稽查队": "李斌", "一中队": "陈杰", "二中队": "李壮壮", "三中队": "楚培培", "四中队": "张亚东", "打假稽查队": "李斌"
-                };
-
-                let rows = [];
-                // 数据从原文件第4行开始 (索引3)
-                for (let i = 3; i < data.length; i++) {
-                    let r = data[i];
-                    if (!r || !r[caseNoIdx] || String(r[caseNoIdx]).trim() === "" || String(r[caseNoIdx]).toLowerCase() === 'nan') continue;
-
-                    // B. 案值计算：Q-AQ (16-43) 隔列求和
-                    let totalVal = 0;
-                    for (let j = 16; j <= 43; j += 2) {
-                        totalVal += this.parseAmount(r[j]);
-                    }
-
-                    // C. 案件类型判定 (优先级：真 > 假 > 走私)
-                    // 真烟区域 (40-46), 假烟区域 (49-55), 走私区域 (58-64)
-                    let zhenSum = 0, jiaSum = 0, zousiSum = 0;
-                    for (let j = 40; j <= 46; j++) zhenSum += this.parseAmount(r[j]);
-                    for (let j = 49; j <= 55; j++) jiaSum += this.parseAmount(r[j]);
-                    for (let j = 58; j <= 64; j++) zousiSum += this.parseAmount(r[j]);
-
-                    let business = "其他案件", type = "其他案件";
-                    if (zhenSum > 0) { business = "查处真烟案件"; type = "打非案件"; }
-                    else if (jiaSum > 0) { business = "查处假烟案件"; type = "打假案件"; }
-                    else if (zousiSum > 0) { business = "查处走私烟案件"; type = "打私案件"; }
-
-                    // D. 卷宗号转换 (year: 7-11, seq: last 3)
-                    let dossier = "未知";
-                    let caseIdStr = String(r[caseNoIdx]).split('.')[0];
-                    if (caseIdStr.length >= 11) {
-                        let year = caseIdStr.substring(7, 11);
-                        let seqStr = caseIdStr.substring(caseIdStr.length - 3);
-                        dossier = `${year}年第${parseInt(seqStr)}号`;
-                    }
-
-                    // E. 立案日期 (优先立案时间，次选案发时间)
-                    let finalDate = "";
-                    let regVal = regIdx !== -1 ? r[regIdx] : null;
-                    let incidentVal = incidentIdx !== -1 ? r[incidentIdx] : null;
-                    if (regVal && String(regVal).trim() && String(regVal).toLowerCase() !== 'nan') {
-                        finalDate = String(regVal).split(" ")[0];
-                    } else if (incidentVal && String(incidentVal).trim() && String(incidentVal).toLowerCase() !== 'nan') {
-                        finalDate = String(incidentVal).split(" ")[0];
-                    }
-
-                    // F. 负责人匹配
-                    let dept = deptIdx !== -1 ? String(r[deptIdx] || "") : "";
-                    let leader = "未知";
-                    for (let key in leaderMap) {
-                        if (dept.includes(key)) { leader = leaderMap[key]; break; }
-                    }
-
-                    rows.push({
-                        biz: business, type: type, no: dossier, 
-                        date: finalDate, val: totalVal, boss: leader,
-                        sortKey: type === "打非案件" ? 1 : (type === "打假案件" ? 2 : (type === "打私案件" ? 3 : 99))
-                    });
-                }
-
-                // G. 排序：打非(1) -> 打假(2) -> 打私(3) -> 其他(99)
-                rows.sort((a, b) => a.sortKey - b.sortKey);
-
-                let finalResults = [
-                    ["财务一体化平台新增案卷档案明细表"],
-                    ["单位：睢阳区", "", "", "申请日期：" + new Date().toLocaleDateString('zh-CN', {year:'numeric', month:'long', day:'numeric'})],
-                    ["经济业务", "案件类型", "卷宗号", "立案日期", "案值（元）", "负责人"]
-                ];
-                rows.forEach(r => finalResults.push([r.biz, r.type, r.no, r.date, r.val, r.boss]));
-                return finalResults;
             }
         };
 
         // ================== 工具逻辑映射表 ==================
         const ToolLogicMap = {
-            directory: {
-                process: CoreEngine.processDirectory.bind(CoreEngine),
-                sheetName: '行政处罚卷宗目录',
-                description: '卷宗目录生成工具，处理案件数据并生成标准卷宗目录'
-            },
-            reimburse: {
-                process: CoreEngine.processReimburse.bind(CoreEngine),
-                sheetName: '案卷档案',
-                description: '报销案号生成工具，处理案件数据并生成财务报销所需的案号信息'
-            }
+            // 工具逻辑将通过上传的JS文件动态注册
         };
 
         // 工具逻辑注册函数
@@ -713,7 +322,7 @@
         const GIST_CONFIG = {
             gistId: "386bbc5b4db8597ddb014a149698492c",
             fileName: "tool_config.json",
-            enabled: true // 启用 Gist 同步（读取不需要认证）
+            enabled: false // 禁用 Gist 同步，只使用 localStorage
         };
 
         // ================== 系统核心状态与逻辑 ==================
@@ -725,10 +334,7 @@
                 { 
                     id: 1, 
                     name: '稽查核心工具', 
-                    tools: [
-                        { id: 101, name: '卷宗目录生成', logic: 'directory', enabled: true, desc: '严格复刻“卷宗目录自动输出豆包.py”。执行表头动态定位、阶梯罚款计算、案由法律修正、O-AQ列物品检索。导出符合标准的12列目录表。' },
-                        { id: 102, name: '报销案号生成', logic: 'reimburse', enabled: true, desc: '严格复刻“报销案号生成2.0.py”。执行Q-AQ隔列案值统计、案件类型(打非/打假/打私)自动判定、负责人队名映射。结果按案件类型优先级排序。' }
-                    ] 
+                    tools: [] 
                 }
             ]
         };
@@ -754,9 +360,15 @@
                         const file = gist.files[GIST_CONFIG.fileName];
                         if (file && file.content) {
                             state = JSON.parse(file.content);
+                            // 确保state结构完整
+                            if (!state) state = {};
+                            if (!state.categories) state.categories = [{ id: 1, name: '稽查核心工具', tools: [] }];
+                            if (!state.logs) state.logs = [];
+                            if (!state.userPass) state.userPass = 'user666';
+                            if (!state.adminPass) state.adminPass = 'admin888';
                             // 重新注册自定义工具逻辑
-                            state.categories.forEach(category => {
-                                category.tools.forEach(tool => {
+                            (state.categories || []).forEach(category => {
+                                (category.tools || []).forEach(tool => {
                                     if (tool.logic.startsWith('custom_') && tool.code) {
                                         try {
                                             const context = {
@@ -788,9 +400,14 @@
                     const saved = localStorage.getItem('internal_tool_v6_final');
                     if (saved) {
                         state = JSON.parse(saved);
+                        // 确保state结构完整
+                        if (!state.categories) state.categories = [{ id: 1, name: '稽查核心工具', tools: [] }];
+                        if (!state.logs) state.logs = [];
+                        if (!state.userPass) state.userPass = 'user666';
+                        if (!state.adminPass) state.adminPass = 'admin888';
                         // 重新注册自定义工具逻辑
-                        state.categories.forEach(category => {
-                            category.tools.forEach(tool => {
+                        (state.categories || []).forEach(category => {
+                            (category.tools || []).forEach(tool => {
                                 if (tool.logic.startsWith('custom_') && tool.code) {
                                     try {
                                         const context = {
@@ -818,10 +435,15 @@
                 // 从 localStorage 加载配置
                 const saved = localStorage.getItem('internal_tool_v6_final');
                 if (saved) {
-                    state = JSON.parse(saved);
+                    state = JSON.parse(saved) || {};
+                    // 确保state结构完整
+                    if (!state.categories) state.categories = [{ id: 1, name: '稽查核心工具', tools: [] }];
+                    if (!state.logs) state.logs = [];
+                    if (!state.userPass) state.userPass = 'user666';
+                    if (!state.adminPass) state.adminPass = 'admin888';
                     // 重新注册自定义工具逻辑
-                    state.categories.forEach(category => {
-                        category.tools.forEach(tool => {
+                    (state.categories || []).forEach(category => {
+                        (category.tools || []).forEach(tool => {
                             if (tool.logic.startsWith('custom_') && tool.code) {
                                 try {
                                     const context = {
@@ -951,108 +573,89 @@
                     const outWb = new ExcelJS.Workbook();
                     const outWs = outWb.addWorksheet(logicConfig.sheetName);
 
-                    if (currentTool.logic === 'directory') {
-                        // 1. 设置列宽
-                        const colWidths = [5.5, 17.6, 21.5, 43.7, 12, 15, 15, 25, 18, 17, 15.5, 15];
-                        outWs.columns = colWidths.map((w, i) => ({ header: '', key: 'col' + i, width: w }));
+                    // 检查是否有自定义格式设置
+                    const toolConfig = currentTool.code ? (() => {
+                        try {
+                            const context = { toolConfig: null };
+                            new Function('context', currentTool.code)(context);
+                            return context.toolConfig;
+                        } catch (e) {
+                            return null;
+                        }
+                    })() : null;
 
-                        // 2. 写入数据并设置样式 (第一行标题，第二行表头)
+                    const formatConfig = toolConfig?.format;
+
+                    if (formatConfig) {
+                        // 使用工具定义的格式设置
                         processed.forEach((rowData, rIdx) => {
-                            let targetRowIdx;
-                            if (rIdx === 0) {
-                                // 标题行 (Excel行号 1)
-                                targetRowIdx = 1;
-                                const row = outWs.getRow(targetRowIdx);
-                                row.values = rowData;
-                                row.height = 42;
-                                outWs.mergeCells(1, 1, 1, 12); // 合并第一行 A-L
-                                const cell = row.getCell(1);
-                                cell.font = { name: '宋体', size: 22, bold: true };
-                                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                            } else if (rIdx === 1) {
-                                // 表头行 (Excel行号 2)
-                                targetRowIdx = 2;
-                                const row = outWs.getRow(targetRowIdx);
-                                row.values = rowData;
-                                row.height = 28.5;
-                                row.eachCell(cell => {
-                                    cell.font = { name: '仿宋', size: 12, bold: true };
-                                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-                                });
-                            } else {
-                                // 数据行从第三行开始 (Excel行号 rIdx + 1)
-                                targetRowIdx = rIdx + 1;
-                                const row = outWs.getRow(targetRowIdx);
-                                row.values = rowData;
-                                row.height = 33.5;
-                                row.eachCell((cell, cIdx) => {
-                                    cell.font = { name: '仿宋', size: 12 };
-                                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-                                    if (cIdx === 6 || cIdx === 7) cell.numFmt = '0.00';
-                                });
+                            const row = outWs.getRow(rIdx + 1);
+                            row.values = rowData;
+                            
+                            // 设置行格式
+                            let rowFormat;
+                            if (rIdx === 0 && formatConfig.titleRow) {
+                                rowFormat = formatConfig.titleRow;
+                                row.height = rowFormat.height;
+                            } else if (rIdx === 1 && formatConfig.headerRow) {
+                                rowFormat = formatConfig.headerRow;
+                                row.height = rowFormat.height;
+                            } else if (formatConfig.dataRow) {
+                                rowFormat = formatConfig.dataRow;
+                                row.height = rowFormat.height;
                             }
+                            
+                            // 设置单元格格式
+                            row.eachCell((cell, cIdx) => {
+                                if (rowFormat) {
+                                    cell.font = rowFormat.font;
+                                    cell.alignment = rowFormat.alignment;
+                                } else {
+                                    cell.font = { name: '宋体', size: 12 };
+                                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                                }
+                                // 财务一体化平台信息申请基础表(睢阳区）：第一行和第二行无边框，第三行及之后全边框
+                                if (currentTool.sheetName === "财务一体化平台信息申请基础表(睢阳区）") {
+                                    if (rIdx === 0 || rIdx === 1) {
+                                        // 第一行和第二行无边框
+                                        cell.border = {};
+                                    } else {
+                                        // 第三行及之后全边框
+                                        cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                                    }
+                                } else {
+                                    // 其他表格全边框
+                                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                                }
+                            });
                         });
+                        
+                        // 设置列宽
+                        if (formatConfig.columns) {
+                            outWs.columns = formatConfig.columns;
+                        }
+                        
+                        // 处理单元格合并
+                        if (formatConfig.titleRow && formatConfig.titleRow.merge) {
+                            const merge = formatConfig.titleRow.merge;
+                            outWs.mergeCells(merge.start.row, merge.start.column, merge.end.row, merge.end.column);
+                        }
+                        // 处理第二行合并
+                        if (formatConfig.secondRow && formatConfig.secondRow.merge) {
+                            const merge = formatConfig.secondRow.merge;
+                            outWs.mergeCells(merge.start.row, merge.start.column, merge.end.row, merge.end.column);
+                        }
                     } else {
-                        // 报销案号生成样式
-                        const colWidths = [32, 12, 20, 20, 20, 20];
-                        outWs.columns = colWidths.map((w, i) => ({ header: '', key: 'col' + i, width: w }));
-
-                        const now = new Date();
-                        const year = now.getFullYear();
-                        const month = String(now.getMonth() + 1).padStart(2, '0');
-                        const day = String(now.getDate()).padStart(2, '0');
-                        const dateStr = `${year}年${month}月${day}日`;
-
+                        // 通用导出逻辑
                         processed.forEach((rowData, rIdx) => {
-                            let targetRowIdx;
-                            if (rIdx === 0) {
-                                // 标题行 (Excel行号 1)
-                                targetRowIdx = 1;
-                                const row = outWs.getRow(targetRowIdx);
-                                row.values = rowData;
-                                row.height = 60;
-                                outWs.mergeCells(1, 1, 1, 6); // 合并第一行 A-F
-                                const cell = row.getCell(1);
-                                cell.font = { name: '宋体', size: 22, bold: true };
-                                cell.alignment = { horizontal: 'center', vertical: 'middle' };
-                            } else if (rIdx === 1) {
-                                // 单位、日期行 (Excel行号 2)
-                                targetRowIdx = 2;
-                                const row = outWs.getRow(targetRowIdx);
-                                rowData[3] = "申请日期：" + dateStr; // 修正申请日期格式
-                                row.values = rowData;
-                                row.height = 30;
-                                outWs.mergeCells(2, 4, 2, 6); // 合并第二行 D-F
-                                row.eachCell((cell, cIdx) => {
-                                    cell.font = { name: '宋体', size: 11 };
-                                    cell.alignment = { horizontal: cIdx === 1 ? 'left' : 'center', vertical: 'middle' };
-                                });
-                            } else if (rIdx === 2) {
-                                // 表头行 (Excel行号 3)
-                                targetRowIdx = 3;
-                                const row = outWs.getRow(targetRowIdx);
-                                row.values = rowData;
-                                row.height = 50;
-                                row.eachCell(cell => {
-                                    cell.font = { name: '宋体', size: 11, bold: true };
-                                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-                                });
-                            } else {
-                                // 数据行从第四行开始 (Excel行号 rIdx + 1)
-                                targetRowIdx = rIdx + 1;
-                                const row = outWs.getRow(targetRowIdx);
-                                row.values = rowData;
-                                row.height = 50;
-                                row.eachCell((cell, cIdx) => {
-                                    cell.font = { name: '宋体', size: 11 };
-                                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
-                                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-                                    if (cIdx === 5) cell.numFmt = '#,##0.00';
-                                });
-                            }
+                            const row = outWs.getRow(rIdx + 1);
+                            row.values = rowData;
+                            row.height = 25;
+                            row.eachCell((cell, cIdx) => {
+                                cell.font = { name: '宋体', size: 12 };
+                                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                                cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                            });
                         });
                     }
 
@@ -1065,9 +668,11 @@
                     // 默认文件名逻辑
                     let outName = document.getElementById('exportFileName').value.trim();
                     if (!outName) {
-                        const inName = fileInput.files[0].name.toLowerCase();
-                        if (inName.includes('案件查询列表')) {
-                            outName = (currentTool.logic === 'directory') ? '睢阳区局行政处罚案卷目录' : '财务一体化平台信息申请基础表(睢阳区）';
+                        // 根据工具名称或sheetName设置默认文件名
+                        if (currentTool.name === "报销案号生成" || currentTool.sheetName === "财务一体化平台信息申请基础表(睢阳区）") {
+                            outName = "财务一体化平台信息申请基础表(睢阳区）";
+                        } else if (currentTool.name === "卷宗目录生成" || currentTool.sheetName === "睢阳区局行政处罚案卷目录") {
+                            outName = "睢阳区局行政处罚案卷目录";
                         } else {
                             outName = fileInput.files[0].name.replace(/\.[^/.]+$/, "") + "_结果";
                         }
@@ -1140,18 +745,17 @@
 
         function renderAdminTools() {
             const container = document.getElementById('adminToolTableContainer');
-            let html = '<table class="admin-table"><thead><tr><th>工具名称</th><th>所属分类</th><th>逻辑类型</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+            let html = '<table class="admin-table"><thead><tr><th>工具名称</th><th>所属分类</th><th>工具说明</th><th>状态</th><th>操作</th></tr></thead><tbody>';
             state.categories.forEach(cat => {
                 cat.tools.forEach(tool => {
-                    const logicConfig = ToolLogicMap[tool.logic] || { description: '自定义逻辑' };
                     html += `
                         <tr>
                             <td><strong>${tool.name}</strong></td>
                             <td>${cat.name}</td>
-                            <td>${logicConfig.description || tool.logic}</td>
+                            <td>${tool.desc || '无'}</td>
                             <td><span class="status-tag ${tool.enabled ? 'status-on' : 'status-off'}">${tool.enabled ? '启用中' : '已禁用'}</span></td>
-                            <td>
-                                <span class="action-link" onclick="openToolModal(${cat.id}, ${tool.id})"><strong>编辑属性与开关</strong></span>
+                            <td style="white-space: nowrap;">
+                                <span class="action-link" onclick="openToolModal(${cat.id}, ${tool.id})"><strong>编辑</strong></span>
                                 <span class="action-link danger" onclick="deleteTool(${cat.id}, ${tool.id})"><strong>删除</strong></span>
                             </td>
                         </tr>
@@ -1174,41 +778,17 @@
             
             if (tid) {
                 const tool = state.categories.find(c => c.id === cid).tools.find(t => t.id === tid);
-                document.getElementById('editToolName').value = tool.name;
-                document.getElementById('editToolCatSelect').value = cid;
-                document.getElementById('toolCreateType').value = tool.logic.startsWith('custom_') ? 'upload' : 'template';
-                document.getElementById('editToolLogicType').value = tool.logic;
-                document.getElementById('editToolDesc').value = tool.desc;
                 document.getElementById('editToolStatus').value = tool.enabled.toString();
-                toggleToolCreateMethod();
-                updateLogicDescription();
+                document.getElementById('editToolDesc').value = tool.desc || '';
             } else {
-                document.getElementById('editToolName').value = '';
-                document.getElementById('toolCreateType').value = 'template';
-                document.getElementById('editToolLogicType').value = 'directory';
-                document.getElementById('editToolDesc').value = '';
                 document.getElementById('editToolStatus').value = 'true';
-                toggleToolCreateMethod();
-                updateLogicDescription();
+                document.getElementById('editToolDesc').value = '';
             }
             document.getElementById('editModal').style.display = 'flex';
         }
 
         function toggleToolCreateMethod() {
-            const type = document.getElementById('toolCreateType').value;
-            document.getElementById('templateMethod').style.display = type === 'template' ? 'block' : 'none';
-            document.getElementById('uploadMethod').style.display = type === 'upload' ? 'block' : 'none';
-        }
-
-        function updateLogicDescription() {
-            const logic = document.getElementById('editToolLogicType').value;
-            const desc = document.getElementById('logicDescription');
-            const logicConfig = ToolLogicMap[logic];
-            if (logicConfig) {
-                desc.innerText = logicConfig.description;
-            } else {
-                desc.innerText = '自定义逻辑类型';
-            }
+            // 只有上传代码文件一种方式
         }
 
         function deleteTool(cid, tid) {
@@ -1237,99 +817,100 @@
                     addLog(`新建了分类 [${name}]`);
                 }
             } else {
-                const name = document.getElementById('editToolName').value.trim();
                 const newCid = parseInt(document.getElementById('editToolCatSelect').value);
-                const desc = document.getElementById('editToolDesc').value;
                 const status = document.getElementById('editToolStatus').value === 'true';
-                const createType = document.getElementById('toolCreateType').value;
-                
-                if (!name) return alert('工具名称不能为空');
+                const toolDesc = document.getElementById('editToolDesc').value.trim();
                 
                 if (editingContext.id) {
                     // 编辑现有工具
                     const oldCat = state.categories.find(c => c.id === editingContext.catId);
                     const tool = oldCat.tools.find(t => t.id === editingContext.id);
-                    tool.name = name;
-                    tool.desc = desc;
                     tool.enabled = status;
+                    tool.desc = toolDesc;
                     
                     if (editingContext.catId !== newCid) {
                         oldCat.tools = oldCat.tools.filter(t => t.id !== editingContext.id);
                         state.categories.find(c => c.id === newCid).tools.push(tool);
-                        addLog(`将工具 [${name}] 移动到了分类 [${state.categories.find(c => c.id === newCid).name}]`);
+                        addLog(`将工具 [${tool.name}] 移动到了分类 [${state.categories.find(c => c.id === newCid).name}]`);
                     } else {
-                        addLog(`修改了工具 [${name}]`);
+                        addLog(`修改了工具 [${tool.name}]`);
                     }
                 } else {
-                    // 创建新工具
-                    if (createType === 'template') {
-                        const logic = document.getElementById('editToolLogicType').value;
+                // 创建新工具
+                const fileInput = document.getElementById('toolCodeInput');
+                if (!fileInput.files[0]) return alert('请上传工具代码文件');
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        // 执行代码文件
+                        const code = e.target.result;
+                        const context = {
+                            console: console,
+                            CoreEngine: CoreEngine,
+                            toolConfig: null
+                        };
+                        
+                        // 安全执行代码
+                        new Function('context', code)(context);
+                        
+                        if (!context.toolConfig || !context.toolConfig.process) {
+                            throw new Error('代码文件格式错误：缺少 toolConfig 或 process 函数');
+                        }
+                        
+                        // 从JS文件中提取工具信息
+                        const toolName = context.toolConfig.name;
+                        if (!toolName) {
+                            throw new Error('代码文件格式错误：缺少 toolConfig.name 字段');
+                        }
+                        // 工具说明默认为空白，仅使用用户输入的内容
+                        const toolDesc = document.getElementById('editToolDesc').value.trim();
+                        const toolSheetName = context.toolConfig.sheetName || toolName;
+                        
+                        const logicType = 'custom_' + Date.now();
+                        registerToolLogic(logicType, {
+                            process: context.toolConfig.process,
+                            sheetName: toolSheetName,
+                            description: ''
+                        });
+                        
                         const newTool = {
                             id: Date.now(),
-                            name: name,
-                            logic: logic,
+                            name: toolName,
+                            logic: logicType,
                             enabled: true,
-                            desc: desc
+                            desc: toolDesc,
+                            code: code, // 保存代码以便后续编辑
+                            sheetName: toolSheetName // 保存sheetName以便导出时使用
                         };
                         state.categories.find(c => c.id === newCid).tools.push(newTool);
-                        addLog(`新建了工具 [${name}]，逻辑类型: ${logic}`);
-                    } else if (createType === 'upload') {
-                        const fileInput = document.getElementById('toolCodeInput');
-                        if (!fileInput.files[0]) return alert('请上传工具代码文件');
+                        addLog(`新建了自定义工具 [${toolName}]`);
                         
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            try {
-                                // 执行代码文件
-                                const code = e.target.result;
-                                const context = {
-                                    console: console,
-                                    CoreEngine: CoreEngine,
-                                    toolConfig: null
-                                };
-                                
-                                // 安全执行代码
-                                new Function('context', code)(context);
-                                
-                                if (!context.toolConfig || !context.toolConfig.process) {
-                                    throw new Error('代码文件格式错误：缺少 toolConfig 或 process 函数');
-                                }
-                                
-                                const logicType = 'custom_' + Date.now();
-                                registerToolLogic(logicType, {
-                                    process: context.toolConfig.process,
-                                    sheetName: context.toolConfig.sheetName || name,
-                                    description: context.toolConfig.description || desc
-                                });
-                                
-                                const newTool = {
-                                    id: Date.now(),
-                                    name: name,
-                                    logic: logicType,
-                                    enabled: true,
-                                    desc: desc,
-                                    code: code // 保存代码以便后续编辑
-                                };
-                                state.categories.find(c => c.id === newCid).tools.push(newTool);
-                                addLog(`新建了自定义工具 [${name}]`);
-                                
-                                saveAll(); closeModal('editModal');
-                                if (currentRole === 'admin') {
-                                    switchAdminSection('tool');
-                                } else {
-                                    renderUserCats();
-                                }
-                            } catch (err) {
-                                alert('代码文件解析失败：' + err.message);
-                            }
-                        };
-                        reader.readAsText(fileInput.files[0]);
-                        return; // 等待文件读取完成
+                        saveAll(); closeModal('editModal');
+                        if (currentRole === 'admin') {
+                            switchAdminSection('tool');
+                        } else {
+                            renderUserCats();
+                        }
+                    } catch (err) {
+                        alert('代码文件解析失败：' + err.message);
                     }
+                };
+                reader.readAsText(fileInput.files[0]);
+                return; // 等待文件读取完成
                 }
             }
-            saveAll(); closeModal('editModal');
-            currentRole === 'admin' ? (editingContext.type === 'cat' ? switchAdminSection('cat') : switchAdminSection('tool')) : renderUserCats();
+            saveAll();
+            closeModal('editModal');
+            if (currentRole === 'admin') {
+                if (editingContext.type === 'cat') {
+                    switchAdminSection('cat');
+                } else {
+                    switchAdminSection('tool');
+                }
+            } else {
+                renderUserCats();
+            }
         }
 
         function renderAdminLogs() {
@@ -1371,7 +952,12 @@
 
         function saveAll() {
             // 保存到 localStorage
-            localStorage.setItem('internal_tool_v6_final', JSON.stringify(state));
+            try {
+                localStorage.setItem('internal_tool_v6_final', JSON.stringify(state));
+                console.log('Config saved to localStorage successfully:', state);
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
+            }
             
             // 尝试保存到 GitHub Gist（如果启用）
             if (GIST_CONFIG.enabled) {
@@ -1457,10 +1043,10 @@
             const dataStr = JSON.stringify(state, null, 2);
             const dataBlob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `tool_config_${new Date().toISOString().slice(0,10)}.json`;
-            link.click();
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tool_config_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
             URL.revokeObjectURL(url);
             addLog('导出了系统配置');
         }
@@ -1472,53 +1058,29 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const config = JSON.parse(e.target.result);
-                    state = config;
-                    // 重新注册自定义工具逻辑
-                    state.categories.forEach(category => {
-                        category.tools.forEach(tool => {
-                            if (tool.logic.startsWith('custom_') && tool.code) {
-                                try {
-                                    const context = {
-                                        console: console,
-                                        CoreEngine: CoreEngine,
-                                        toolConfig: null
-                                    };
-                                    new Function('context', tool.code)(context);
-                                    if (context.toolConfig && context.toolConfig.process) {
-                                        registerToolLogic(tool.logic, {
-                                            process: context.toolConfig.process,
-                                            sheetName: context.toolConfig.sheetName || tool.name,
-                                            description: context.toolConfig.description || tool.desc
-                                        });
-                                    }
-                                } catch (err) {
-                                    console.error('Failed to register custom tool logic:', err);
-                                }
-                            }
-                        });
-                    });
+                    const importedState = JSON.parse(e.target.result);
+                    state = importedState;
                     addLog('导入了系统配置');
                     saveAll();
-                    alert('配置导入成功！系统将自动刷新。');
+                    alert('配置导入成功，系统将刷新');
                     location.reload();
                 } catch (err) {
-                    alert('配置文件格式错误，导入失败！');
+                    alert('配置文件格式错误：' + err.message);
                 }
             };
             reader.readAsText(file);
-            input.value = ''; // 清除输入
         }
 
-        function closeModal(id) {
-            document.getElementById(id).style.display = 'none';
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
         }
 
         function backToCategories() {
-            renderUserCats();
+            document.getElementById('userToolView').style.display = 'none';
+            document.getElementById('userCategoryView').style.display = 'block';
         }
 
-        // 启动系统
+        // 初始化
         window.onload = start;
     </script>
 </body>
