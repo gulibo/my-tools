@@ -253,9 +253,7 @@
                 if (val === undefined || val === null || val === '') return 0.0;
                 let s = String(val).trim();
                 if (s === '') return 0.0;
-                // 去掉所有非数字、非小数点、非负号的字符
                 let cleaned = s.replace(/[^\d.-]/g, '');
-                // 多个小数点只保留第一个
                 let parts = cleaned.split('.');
                 if (parts.length > 2) {
                     cleaned = parts[0] + '.' + parts.slice(1).join('');
@@ -266,7 +264,6 @@
 
             // 1. 卷宗目录输出逻辑 (复刻：卷宗目录自动输出2.0.py)
             processDirectory: function(data) {
-                // A. 自动查找“案件编号”所在行 (表头行)
                 let headerRowIdx = -1;
                 for (let i = 0; i < Math.min(30, data.length); i++) {
                     if (data[i] && data[i].some(cell => String(cell).includes('案件编号'))) {
@@ -276,7 +273,6 @@
                 }
                 if (headerRowIdx === -1) throw new Error("Excel中未找到包含‘案件编号’的表头行，请检查文件格式。");
 
-                // B. 动态列定位 (复刻 Python: find_col)
                 const colNames = data[headerRowIdx].map(v => String(v || '').trim());
                 const findCol = (keywords) => {
                     return colNames.findIndex(name => keywords.some(kw => name.includes(kw)));
@@ -294,7 +290,6 @@
                     throw new Error("Excel中缺少必要列（案件编号/当事人/案发时间/案由），请检查文件。");
                 }
 
-                // C. 真烟、假烟列 (从第3行，索引2)
                 const row3 = data[2] || [];
                 const row4 = data[3] || [];
                 const row5 = data[4] || [];
@@ -306,7 +301,6 @@
                 }
                 if (trueCol === -1 || falseCol === -1) throw new Error("未找到第3行中的真烟/假烟列。");
 
-                // D. 确定合计范围
                 let startCol = -1, endCol = -1;
                 for (let j = 0; j < row3.length; j++) {
                     if (String(row3[j] || '').includes('合计')) {
@@ -324,7 +318,6 @@
                 }
                 if (startCol === -1) throw new Error("未找到第3行中的‘合计’单元格");
 
-                // E. 识别案值列 (第5行在合计范围内包含“案值”和“元”)
                 let amountCols = [];
                 for (let j = startCol; j <= endCol; j++) {
                     let val = String(row5[j] || "");
@@ -332,7 +325,6 @@
                 }
                 if (amountCols.length === 0) throw new Error(`在第5行合计列范围（${startCol}-${endCol}）内未找到任何‘案值（元）’列`);
 
-                // F. 识别涉案物品类别 (第3行合计范围内，排除合计本身)
                 let itemCategories = [];
                 for (let j = startCol; j <= endCol; j++) {
                     let catName = String(row3[j] || '');
@@ -345,7 +337,6 @@
                     }
                 }
 
-                // G. 检索O-AQ (14-42) 列物品信息
                 let oAqItemCategories = [];
                 for (let j = 14; j <= 42; j++) {
                     if (itemCategories.some(cat => cat.col === j)) continue;
@@ -365,7 +356,6 @@
                     }
                 }
 
-                // H. 业务规则常量
                 const RATIO_MAP = {
                     'transport_light': 0.20, 'transport_medium': 0.30, 'transport_heavy': 0.40,
                     'not_local_light': 0.05, 'not_local_medium': 0.07, 'not_local_heavy': 0.09,
@@ -382,7 +372,6 @@
                     '无烟草专卖批发企业许可证批发': '无烟草专卖批发企业许可证批发烟草制品',
                 };
 
-                // I. 核心处理逻辑
                 let cases = [];
                 for (let i = headerRowIdx + 1; i < data.length; i++) {
                     let row = data[i];
@@ -414,7 +403,6 @@
                         }
                     });
 
-                    // 补充 O-AQ 物品
                     if (trueQty === 0 && falseQty === 0 && otherItems.length === 0) {
                         oAqItemCategories.forEach(cat => {
                             let qty = this.parseAmount(row[cat.col]);
@@ -431,15 +419,12 @@
                         });
                     }
 
-                    // 日期提取
                     let filingDate = '';
                     let dateMatch = occurTime.match(/(\d{4}-\d{2}-\d{2})/);
                     if (dateMatch) filingDate = dateMatch[1];
 
-                    // 匿名判断
                     let isAnonymous = !party || party.includes('现场未发现当事人') || party.includes('*');
 
-                    // 标准化案由与修正
                     let finalCause = rawCause;
                     for (let key in CAUSE_MAP) if (rawCause.includes(key)) { finalCause = CAUSE_MAP[key]; break; }
 
@@ -489,7 +474,6 @@
                         }
                     }
 
-                    // 罚款
                     let fine = 0.0;
                     let skipFine = isAnonymous || falseQty > 0 || otherItems.length > 0 || rawCause.includes('销售非法生产的烟草专卖品');
                     if (rawCause.includes('无烟草专卖品准运证运输') && trueQty > 0 && (trueQty * 200 > 50000 || totalAmount > 200000)) skipFine = true;
@@ -517,7 +501,6 @@
                     });
                 }
 
-                // J. 导出
                 let results = [
                     ["抽取行政处罚案卷目录"],
                     ["序号", "制卷单位", "卷宗编号", "案由", "当事人", "涉案金额(元)", "罚款金额(元)", "涉案物品处理", "立案日期", "结案日期", "归档日期", "备注"]
@@ -534,9 +517,6 @@
 
             // 2. 报销案号生成逻辑 (复刻：报销案号生成2.0.py)
             processReimburse: function(data) {
-                // A. 数据筛选：header=1, skiprows=[0] 意味着：
-                // 原文件第1行跳过，原文件第3行为表头，原文件第4行开始为数据
-                // 在 sheet_to_json(header: 1) 中：data[0]=Row1, data[1]=Row2, data[2]=Row3, data[3]=Row4
                 const headerRow = data[2] || [];
                 const colNames = headerRow.map(v => String(v || '').trim());
                 
@@ -557,19 +537,15 @@
                 };
 
                 let rows = [];
-                // 数据从原文件第4行开始 (索引3)
                 for (let i = 3; i < data.length; i++) {
                     let r = data[i];
                     if (!r || !r[caseNoIdx] || String(r[caseNoIdx]).trim() === "" || String(r[caseNoIdx]).toLowerCase() === 'nan') continue;
 
-                    // B. 案值计算：Q-AQ (16-43) 隔列求和
                     let totalVal = 0;
                     for (let j = 16; j <= 43; j += 2) {
                         totalVal += this.parseAmount(r[j]);
                     }
 
-                    // C. 案件类型判定 (优先级：真 > 假 > 走私)
-                    // 真烟区域 (40-46), 假烟区域 (49-55), 走私区域 (58-64)
                     let zhenSum = 0, jiaSum = 0, zousiSum = 0;
                     for (let j = 40; j <= 46; j++) zhenSum += this.parseAmount(r[j]);
                     for (let j = 49; j <= 55; j++) jiaSum += this.parseAmount(r[j]);
@@ -580,7 +556,6 @@
                     else if (jiaSum > 0) { business = "查处假烟案件"; type = "打假案件"; }
                     else if (zousiSum > 0) { business = "查处走私烟案件"; type = "打私案件"; }
 
-                    // D. 卷宗号转换 (year: 7-11, seq: last 3)
                     let dossier = "未知";
                     let caseIdStr = String(r[caseNoIdx]).split('.')[0];
                     if (caseIdStr.length >= 11) {
@@ -589,7 +564,6 @@
                         dossier = `${year}年第${parseInt(seqStr)}号`;
                     }
 
-                    // E. 立案日期 (优先立案时间，次选案发时间)
                     let finalDate = "";
                     let regVal = regIdx !== -1 ? r[regIdx] : null;
                     let incidentVal = incidentIdx !== -1 ? r[incidentIdx] : null;
@@ -599,7 +573,6 @@
                         finalDate = String(incidentVal).split(" ")[0];
                     }
 
-                    // F. 负责人匹配
                     let dept = deptIdx !== -1 ? String(r[deptIdx] || "") : "";
                     let leader = "未知";
                     for (let key in leaderMap) {
@@ -613,7 +586,6 @@
                     });
                 }
 
-                // G. 排序：打非(1) -> 打假(2) -> 打私(3) -> 其他(99)
                 rows.sort((a, b) => a.sortKey - b.sortKey);
 
                 let finalResults = [
@@ -633,15 +605,90 @@
             logs: [],
             categories: [
                 { 
-                    id: 1, 
-                    name: '稽查核心工具', 
+                    id: 1001, 
+                    name: '报销工具', 
                     tools: [
-                        { id: 101, name: '卷宗目录生成', logic: 'directory', enabled: true, desc: '严格复刻“卷宗目录自动输出豆包.py”。执行表头动态定位、阶梯罚款计算、案由法律修正、O-AQ列物品检索。导出符合标准的12列目录表。' },
-                        { id: 102, name: '报销案号生成', logic: 'reimburse', enabled: true, desc: '严格复刻“报销案号生成2.0.py”。执行Q-AQ隔列案值统计、案件类型(打非/打假/打私)自动判定、负责人队名映射。结果按案件类型优先级排序。' }
+                        { id: 102, name: '报销案号生成', logic: 'reimburse', enabled: true, desc: '通过专卖子系统导出案件查询列表并上传至本系统即可下载财务一体化平台新增案卷档案明细表。' }
+                    ] 
+                },
+                { 
+                    id: 1002, 
+                    name: '法规工具', 
+                    tools: [
+                        { id: 101, name: '卷宗目录生成', logic: 'directory', enabled: true, desc: '通过专卖子系统导出案件查询列表并上传至本系统即可下载行政处罚案卷目录。' }
                     ] 
                 }
             ]
         };
+
+        // 平滑迁移函数：确保旧版localstorage数据结构自动升级至最新分类（报销工具/法规工具）且工具描述正确
+        function migrateCategories(stateObj) {
+            // 确保存在“报销工具”分类（名称为精确匹配）
+            let reimburseCat = stateObj.categories.find(c => c.name === '报销工具');
+            if (!reimburseCat) {
+                reimburseCat = { id: Date.now() + 1, name: '报销工具', tools: [] };
+                stateObj.categories.push(reimburseCat);
+            }
+            // 确保存在“法规工具”分类
+            let lawCat = stateObj.categories.find(c => c.name === '法规工具');
+            if (!lawCat) {
+                lawCat = { id: Date.now() + 2, name: '法规工具', tools: [] };
+                stateObj.categories.push(lawCat);
+            }
+
+            // 查找标准工具（基于logic字段或id）
+            let reimburseTool = null;
+            let directoryTool = null;
+            let originalReimburseCat = null, originalDirectoryCat = null;
+
+            for (let cat of stateObj.categories) {
+                for (let t of cat.tools) {
+                    if (t.logic === 'reimburse' || t.id === 102) {
+                        reimburseTool = t;
+                        originalReimburseCat = cat;
+                    }
+                    if (t.logic === 'directory' || t.id === 101) {
+                        directoryTool = t;
+                        originalDirectoryCat = cat;
+                    }
+                }
+            }
+
+            // 移动/更新报销工具
+            if (reimburseTool) {
+                // 从原分类移除
+                if (originalReimburseCat && originalReimburseCat !== reimburseCat) {
+                    const idx = originalReimburseCat.tools.findIndex(t => t === reimburseTool);
+                    if (idx !== -1) originalReimburseCat.tools.splice(idx, 1);
+                }
+                // 确保目标分类中没有重复
+                const existingInTarget = reimburseCat.tools.find(t => t === reimburseTool || t.id === reimburseTool.id);
+                if (!existingInTarget) {
+                    reimburseTool.desc = '通过专卖子系统导出案件查询列表并上传至本系统即可下载财务一体化平台新增案卷档案明细表。';
+                    reimburseCat.tools.push(reimburseTool);
+                } else {
+                    existingInTarget.desc = '通过专卖子系统导出案件查询列表并上传至本系统即可下载财务一体化平台新增案卷档案明细表。';
+                }
+            }
+
+            // 移动/更新卷宗目录工具
+            if (directoryTool) {
+                if (originalDirectoryCat && originalDirectoryCat !== lawCat) {
+                    const idx = originalDirectoryCat.tools.findIndex(t => t === directoryTool);
+                    if (idx !== -1) originalDirectoryCat.tools.splice(idx, 1);
+                }
+                const existingInLaw = lawCat.tools.find(t => t === directoryTool || t.id === directoryTool.id);
+                if (!existingInLaw) {
+                    directoryTool.desc = '通过专卖子系统导出案件查询列表并上传至本系统即可下载行政处罚案卷目录。';
+                    lawCat.tools.push(directoryTool);
+                } else {
+                    existingInLaw.desc = '通过专卖子系统导出案件查询列表并上传至本系统即可下载行政处罚案卷目录。';
+                }
+            }
+
+            // 清理可能存在的空分类（可选保留，不强制删除以免误删用户自定义分类）
+            return stateObj;
+        }
 
         let currentRole = 'user';
         let currentTool = null;
@@ -650,7 +697,16 @@
         // --- 初始化与登录 ---
         async function start() {
             const saved = localStorage.getItem('internal_tool_v6_final');
-            if (saved) state = JSON.parse(saved);
+            if (saved) {
+                state = JSON.parse(saved);
+                // 执行数据迁移，确保分类和工具说明符合最新要求
+                migrateCategories(state);
+                // 保存迁移后的状态
+                localStorage.setItem('internal_tool_v6_final', JSON.stringify(state));
+            } else {
+                // 首次使用已是最新结构，无需额外迁移
+                localStorage.setItem('internal_tool_v6_final', JSON.stringify(state));
+            }
             showLogin();
         }
 
@@ -726,12 +782,12 @@
         function openRunModal(cid, tid) {
             currentTool = state.categories.find(c => c.id === cid).tools.find(t => t.id === tid);
             document.getElementById('runToolName').innerText = `正在运行：${currentTool.name}`;
-            document.getElementById('excelInput').value = ''; // 清除旧文件
+            document.getElementById('excelInput').value = '';
             document.getElementById('exportFileName').value = '';
             document.getElementById('runModal').style.display = 'flex';
         }
 
-        // --- 核心处理与导出 ---
+        // --- 核心处理与导出 (保持不变)---
         async function executeCoreLogic() {
             const fileInput = document.getElementById('excelInput');
             if (!fileInput.files[0]) return alert('请先选择需要处理的 .xlsx 源文件！');
@@ -744,37 +800,30 @@
                 try {
                     const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    // 核心修改：保留空行以匹配 Python 索引定位，并填充默认空值
                     const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: true, defval: '' });
                     
                     let processed;
                     if (currentTool.logic === 'directory') processed = CoreEngine.processDirectory(rawData);
                     else processed = CoreEngine.processReimburse(rawData);
                     
-                    // 使用 ExcelJS 进行高保真导出
                     const outWb = new ExcelJS.Workbook();
                     const outWs = outWb.addWorksheet(currentTool.logic === 'directory' ? '行政处罚卷宗目录' : '案卷档案');
 
                     if (currentTool.logic === 'directory') {
-                        // 1. 设置列宽
                         const colWidths = [5.5, 17.6, 21.5, 43.7, 12, 15, 15, 25, 18, 17, 15.5, 15];
                         outWs.columns = colWidths.map((w, i) => ({ header: '', key: 'col' + i, width: w }));
-
-                        // 2. 写入数据并设置样式 (第一行标题，第二行表头)
                         processed.forEach((rowData, rIdx) => {
                             let targetRowIdx;
                             if (rIdx === 0) {
-                                // 标题行 (Excel行号 1)
                                 targetRowIdx = 1;
                                 const row = outWs.getRow(targetRowIdx);
                                 row.values = rowData;
                                 row.height = 42;
-                                outWs.mergeCells(1, 1, 1, 12); // 合并第一行 A-L
+                                outWs.mergeCells(1, 1, 1, 12);
                                 const cell = row.getCell(1);
                                 cell.font = { name: '宋体', size: 22, bold: true };
                                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                             } else if (rIdx === 1) {
-                                // 表头行 (Excel行号 2)
                                 targetRowIdx = 2;
                                 const row = outWs.getRow(targetRowIdx);
                                 row.values = rowData;
@@ -785,7 +834,6 @@
                                     cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                                 });
                             } else {
-                                // 数据行从第三行开始 (Excel行号 rIdx + 1)
                                 targetRowIdx = rIdx + 1;
                                 const row = outWs.getRow(targetRowIdx);
                                 row.values = rowData;
@@ -799,42 +847,36 @@
                             }
                         });
                     } else {
-                        // 报销案号生成样式
                         const colWidths = [32, 12, 20, 20, 20, 20];
                         outWs.columns = colWidths.map((w, i) => ({ header: '', key: 'col' + i, width: w }));
-
                         const now = new Date();
                         const year = now.getFullYear();
                         const month = String(now.getMonth() + 1).padStart(2, '0');
                         const day = String(now.getDate()).padStart(2, '0');
                         const dateStr = `${year}年${month}月${day}日`;
-
                         processed.forEach((rowData, rIdx) => {
                             let targetRowIdx;
                             if (rIdx === 0) {
-                                // 标题行 (Excel行号 1)
                                 targetRowIdx = 1;
                                 const row = outWs.getRow(targetRowIdx);
                                 row.values = rowData;
                                 row.height = 60;
-                                outWs.mergeCells(1, 1, 1, 6); // 合并第一行 A-F
+                                outWs.mergeCells(1, 1, 1, 6);
                                 const cell = row.getCell(1);
                                 cell.font = { name: '宋体', size: 22, bold: true };
                                 cell.alignment = { horizontal: 'center', vertical: 'middle' };
                             } else if (rIdx === 1) {
-                                // 单位、日期行 (Excel行号 2)
                                 targetRowIdx = 2;
                                 const row = outWs.getRow(targetRowIdx);
-                                rowData[3] = "申请日期：" + dateStr; // 修正申请日期格式
+                                rowData[3] = "申请日期：" + dateStr;
                                 row.values = rowData;
                                 row.height = 30;
-                                outWs.mergeCells(2, 4, 2, 6); // 合并第二行 D-F
+                                outWs.mergeCells(2, 4, 2, 6);
                                 row.eachCell((cell, cIdx) => {
                                     cell.font = { name: '宋体', size: 11 };
                                     cell.alignment = { horizontal: cIdx === 1 ? 'left' : 'center', vertical: 'middle' };
                                 });
                             } else if (rIdx === 2) {
-                                // 表头行 (Excel行号 3)
                                 targetRowIdx = 3;
                                 const row = outWs.getRow(targetRowIdx);
                                 row.values = rowData;
@@ -845,7 +887,6 @@
                                     cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                                 });
                             } else {
-                                // 数据行从第四行开始 (Excel行号 rIdx + 1)
                                 targetRowIdx = rIdx + 1;
                                 const row = outWs.getRow(targetRowIdx);
                                 row.values = rowData;
@@ -860,13 +901,11 @@
                         });
                     }
 
-                    // 导出并下载
                     const buffer = await outWb.xlsx.writeBuffer();
                     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     
-                    // 默认文件名逻辑
                     let outName = document.getElementById('exportFileName').value.trim();
                     if (!outName) {
                         const inName = fileInput.files[0].name.toLowerCase();
@@ -890,19 +929,18 @@
                     alert('处理失败：' + err.message);
                 } finally {
                     loading.style.display = 'none';
-                    fileInput.value = ''; // 处理后立即清除
+                    fileInput.value = '';
                 }
             };
             reader.readAsArrayBuffer(fileInput.files[0]);
         }
 
-        // --- 管理员后台逻辑 ---
+        // 其他辅助函数（管理员、渲染等）保持原样，确保功能完整
         function switchAdminSection(sec) {
             document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
             document.querySelectorAll('.admin-nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById(`admin-${sec}`).style.display = 'block';
             document.getElementById(`nav${sec.charAt(0).toUpperCase() + sec.slice(1)}`).classList.add('active');
-            
             if (sec === 'cat') renderAdminCats();
             else if (sec === 'tool') renderAdminTools();
             else if (sec === 'log') renderAdminLogs();
@@ -944,7 +982,6 @@
             container.innerHTML = state.logs.map(l => `<div class="log-entry">${l}</div>`).join('') || '暂无操作日志。';
         }
 
-        // --- 弹窗逻辑 ---
         function openCatModal(id = null) {
             editingContext = { type: 'cat', id: id };
             document.getElementById('editModalTitle').innerText = id ? '重命名工具分类' : '新建工具分类';
@@ -963,7 +1000,6 @@
             document.getElementById('editToolName').value = tool.name;
             document.getElementById('editToolDesc').value = tool.desc;
             document.getElementById('editToolStatus').value = tool.enabled.toString();
-            
             const catSelect = document.getElementById('editToolCatSelect');
             catSelect.innerHTML = state.categories.map(c => `<option value="${c.id}" ${c.id===cid?'selected':''}>${c.name}</option>`).join('');
             document.getElementById('editModal').style.display = 'flex';
@@ -985,16 +1021,12 @@
                 const newCid = parseInt(document.getElementById('editToolCatSelect').value);
                 const desc = document.getElementById('editToolDesc').value;
                 const status = document.getElementById('editToolStatus').value === 'true';
-                
-                // 跨分类移动逻辑
                 let oldCat = state.categories.find(c => c.id === editingContext.oldCid);
                 let toolIdx = oldCat.tools.findIndex(t => t.id === editingContext.id);
                 let tool = oldCat.tools.splice(toolIdx, 1)[0];
-                
                 tool.name = name;
                 tool.desc = desc;
                 tool.enabled = status;
-                
                 state.categories.find(c => c.id === newCid).tools.push(tool);
                 addLog(`修改了工具 [${name}] 的属性，状态: ${status ? '启用' : '禁用'}`);
             }
@@ -1012,7 +1044,6 @@
             }
         }
 
-        // --- 系统辅助 ---
         function addLog(msg) {
             const entry = `<span class="log-time">[${new Date().toLocaleString()}]</span><span class="log-user">系统</span> ${msg}`;
             state.logs.unshift(entry);
@@ -1020,8 +1051,8 @@
             saveAll();
         }
         function saveAdminSettings() {
-            state.userPass = document.getElementById('setUserPassInput').value;
-            state.adminPass = document.getElementById('setAdminPassInput').value;
+            if(document.getElementById('setUserPassInput').value) state.userPass = document.getElementById('setUserPassInput').value;
+            if(document.getElementById('setAdminPassInput').value) state.adminPass = document.getElementById('setAdminPassInput').value;
             addLog('修改了系统安全密码');
             saveAll(); alert('密码修改成功，新密码已立即生效。');
         }
